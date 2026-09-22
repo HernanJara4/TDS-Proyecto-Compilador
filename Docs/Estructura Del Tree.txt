@@ -1,0 +1,51 @@
+TDS-Proyecto-Compilador/
+├── Makefile                 # Automatiza la compilación con GCC (flex, bison y dependencias de C)
+├── README.md                # Descripción del proyecto y comandos básicos de ejecución
+├── src/                     # Código fuente (.c, .l, .y)
+│   ├── main.c               # Punto de entrada. Maneja los argumentos de la línea de comandos (-o, -target, -opt, -debug)
+│   ├── scanner/
+│   │   └── gramatica.l      # Especificación para Flex (Analizador Léxico)
+│   ├── parser/
+│   │   └── gramatica.y      # Especificación para Bison (Analizador Sintáctico)
+│   ├── ast/
+│   │   ├── ast.c            # Funciones para crear y recorrer el Árbol de Sintaxis Abstracta
+│   │   └── ast_eval.c       # Lógica del evaluador/intérprete del AST
+│   ├── semantic/
+│   │   ├── symtable.c       # Implementación de la Tabla de Símbolos (TAD, pila de niveles)
+│   │   └── typecheck.c      # Verificación de tipos y reglas semánticas
+│   ├── ir/
+│   │   └── ir.c             # Generación del Código Intermedio (Tres direcciones)
+│   ├── asm/
+│   │   └── codegen.c        # Traducción del IR a assembly x86-64
+│   ├── opt/
+│   │   └── optimizer.c      # Lógica para la etapa de optimizaciones
+│   └── utils/
+│       └── errors.c         # Funciones centralizadas para reportar errores léxicos, sintácticos o semánticos
+├── include/                 # Archivos de cabecera (.h) para interconectar los módulos de src/
+│   ├── ast.h
+│   ├── symtable.h
+│   ├── ir.h
+│   └── globals.h            # Definiciones globales (ej. tokens si no los genera bison automáticamente)
+├── build/                   # Archivos temporales generados durante la compilación
+│   ├── lex.yy.c             # Código C generado por Flex
+│   ├── y.tab.c              # Código C generado por Bison
+│   ├── y.tab.h              # Cabecera generada por Bison
+│   ├── *.o                  # Archivos objeto compilados
+│   └── c-tds                # El ejecutable final del compilador
+├── tests/                   # Casos de prueba para evaluar la implementación
+│   ├── public/              # Casos de test públicos provistos por la cátedra
+│   └── private/             # Casos de test no públicos desarrollados por tu grupo
+└── docs/                    # Documentación requerida para las entregas
+    ├── diseno.txt           # Decisiones de diseño, asunciones, justificaciones y división del trabajo
+    └── bugs.txt             # Problemas conocidos y reportes de casos donde el compilador falla
+
+
+¿Por qué esta estructura?
+
+1 - src/ y include/ separados: Al aislar los archivos .c (en src/) de los .h (en include/), mantienes las interfaces limpias. Cuando la generación de código intermedio necesite consultar el árbol, simplemente incluirá ast.h, sin acoplarse a cómo está implementado en ast.c.
+
+2 - Modularización por fases en src/: Cada carpeta dentro de src/ representa un hito del proyecto. Esto te permite asignar tareas fácilmente entre los integrantes del grupo y evitar archivos monolíticos de miles de líneas.
+
+3 - El directorio build/: Todo lo que se genere automáticamente (como los archivos intermedios de Flex/Bison y los .o de GCC) debe ir aquí. Esto mantiene tu código fuente limpio y te permite configurar tu .gitignore para ignorar simplemente la carpeta build/.
+
+4 - Aislamiento de tests/ y docs/: Como el 70% de la evaluación objetiva recae en los casos de prueba[cite: 1], tener una suite de tests bien organizada te permitirá probar de forma rápida cada avance. Además, tener una carpeta docs/ te asegura no olvidar la documentación que exige la cátedra en cada entrega.
