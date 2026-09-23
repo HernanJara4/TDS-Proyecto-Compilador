@@ -1,0 +1,8 @@
+// Sintactico: desbalanceo de parentesis.
+// El if abre parentesis y no lo cierra: if (x > 1 {
+int x;
+void main() {
+    if (x > 1 {
+        x = 1;
+    }
+}

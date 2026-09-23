@@ -1,0 +1,14 @@
+// Sintactico: misspelling de palabras reservadas.
+// if8, wile y WHILE no son palabras reservadas (se toman como IDs) -> error sintactico.
+int x;
+void main() {
+    if8 (x > 1) {
+        x = 1;
+    }
+    wile (x > 1) {
+        x = 2;
+    }
+    WHILE (x > 1) {
+        x = 3;
+    }
+}

@@ -1,0 +1,7 @@
+// Sintactico: error de representacion de numeros literales.
+// 3{1 no es un literal valido; 2,3 debia ser 2.3.
+int x;
+void main() {
+    x = 3{1;
+    x = 2,3;
+}

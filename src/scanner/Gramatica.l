@@ -23,7 +23,7 @@ FLOTANTE     {DIGITO}+"."{DIGITO}+
 "/*"([^*]|(\*+[^*/]))*\*+"/"            { /* Ignorar comentarios multilinea */ }
 [ \t\n\r\v\f]+                          { /* Ignorar espacios, tabulaciones y saltos de linea */ }
 
-/* ---------- Palabras reservadas ---------- */
+    /* ---------- Palabras reservadas ---------- */
 "boolean"   { return TIPO_BOOLEAN; }
 "else"      { return ELSE; }
 "false"     { return CONST_FALSE; }
@@ -35,12 +35,12 @@ FLOTANTE     {DIGITO}+"."{DIGITO}+
 "while"     { return WHILE; }
 "float"     { return TIPO_FLOAT; }
 
-/* ---------- Literales e identificadores ---------- */
+    /* ---------- Literales e identificadores ---------- */
 {FLOTANTE}  { yylval.fval = atof(yytext); return FLOTANTE; }
 {NRO}       { yylval.ival = atoi(yytext); return NRO; }
 {ID}        { yylval.sval = strdup(yytext); return ID; }
 
-/* ---------- Operadores ---------- */
+    /* ---------- Operadores ---------- */
 "&&"        { return OP_AND; }
 "||"        { return OP_OR; }
 "=="        { return OP_IGUAL; }
@@ -54,7 +54,7 @@ FLOTANTE     {DIGITO}+"."{DIGITO}+
 "%"         { return OP_MOD; }
 "="         { return ASIGNACION; }
 
-/* ---------- Delimitadores ---------- */
+    /* ---------- Delimitadores ---------- */
 ";"         { return PUNTO_Y_COMA; }
 ","         { return COMA; }
 "("         { return PAR_IZQ; }
@@ -62,10 +62,7 @@ FLOTANTE     {DIGITO}+"."{DIGITO}+
 "{"         { return LLAVE_IZQ; }
 "}"         { return LLAVE_DER; }
 
-/* ---------- Espacios (se descartan) ---------- */
-[ \t\r\n]+  { /* espacios en blanco, tabulaciones y saltos de linea */ }
-
-/* ---------- Cualquier otro caracter es un error lexico ---------- */
+    /* ---------- Cualquier otro caracter es un error lexico ---------- */
 .           {
                 fprintf(stderr, "Error lexico en linea %d: caracter no reconocido '%s'\n", yylineno, yytext);
                 errores_lexicos++;

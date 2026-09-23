@@ -61,7 +61,7 @@ Programa
 
 ListaVarDecl
     : ListaVarDecl VarDecl
-    | /* epsilon */
+    | /* lambda */
     ;
 
 VarDecl
@@ -83,7 +83,7 @@ Tipo
 
 ListaMethodDecl
     : ListaMethodDecl MethodDecl
-    | /* epsilon */
+    | /* lambda */
     ;
 
 MethodDecl
@@ -96,7 +96,7 @@ TipoRetorno
     ;
 
 Parametros
-    : /* epsilon */
+    : /* lambda */
     | ListaParametros
     ;
 
@@ -113,12 +113,12 @@ Bloque
 
 ListaVarDeclLocal
     : ListaVarDeclLocal VarDecl
-    | /* epsilon */
+    | /* lambda */
     ;
 
 ListaSentencia
     : ListaSentencia Sentencia
-    | /* epsilon */
+    | /* lambda */
     ;
 
 /* ---------- Sentencias ---------- */
@@ -145,7 +145,7 @@ LlamadaMetodo
     ;
 
 ListaArgs
-    : /* epsilon */
+    : /* lambda */
     | ListaExpr
     ;
 

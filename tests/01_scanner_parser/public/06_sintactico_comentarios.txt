@@ -1,0 +1,8 @@
+// Sintactico: mala escritura de comentarios.
+// "/" suelto no es comentario y "/*" sin cierre no cierra, generan error.
+int x;
+void main() {
+    x = 1; /
+    x = 2; /* comentario sin cerrar
+    x = 3;
+}

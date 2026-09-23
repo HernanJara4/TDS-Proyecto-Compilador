@@ -1,0 +1,8 @@
+// Sintactico: desbalanceo de llaves.
+// Falta la llave de cierre de main (o hay una de mas).
+int x;
+void main() {
+    x = 1;
+    if (x > 0) {
+        x = 2;
+    }

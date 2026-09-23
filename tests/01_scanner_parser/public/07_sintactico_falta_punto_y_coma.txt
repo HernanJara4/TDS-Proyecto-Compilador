@@ -1,0 +1,7 @@
+// Sintactico: falta ";" al final de una sentencia/declaracion.
+int x;
+void main() {
+    int y
+    x = 1
+    x = 2;
+}

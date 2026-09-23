@@ -1,0 +1,6 @@
+// Sintactico: mala declaracion de un ID.
+// 3variable no es un ID valido (no puede empezar con digito).
+int x;
+void main() {
+    int 3variable;
+}
