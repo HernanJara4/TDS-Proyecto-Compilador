@@ -54,18 +54,28 @@ int errores_sintacticos = 0;
 %%
 
 Programa
-    : ListaVarDecl ListaMethodDecl
+    : ListaDeclaraciones
     ;
 
-/* ---------- Declaraciones de variables ---------- */
+/* ---------- Declaraciones de variables globales y metodos ---------- */
 
-ListaVarDecl
-    : ListaVarDecl VarDecl
+ListaDeclaraciones
+    : ListaDeclaraciones Declaracion
     | /* lambda */
     ;
 
+Declaracion
+    : VarDecl
+    | MethodDecl
+    ;
+
 VarDecl
-    : Tipo ListaId PUNTO_Y_COMA
+    : Tipo ID RestoVarDecl   { free($2); }
+    ;
+
+RestoVarDecl
+    : PUNTO_Y_COMA
+    | COMA ListaId PUNTO_Y_COMA
     ;
 
 ListaId
@@ -79,20 +89,9 @@ Tipo
     | TIPO_FLOAT
     ;
 
-/* ---------- Declaraciones de metodos ---------- */
-
-ListaMethodDecl
-    : ListaMethodDecl MethodDecl
-    | /* lambda */
-    ;
-
 MethodDecl
-    : TipoRetorno ID PAR_IZQ Parametros PAR_DER Bloque   { free($2); }
-    ;
-
-TipoRetorno
-    : Tipo
-    | TIPO_VOID
+    : Tipo ID PAR_IZQ Parametros PAR_DER Bloque        { free($2); }
+    | TIPO_VOID ID PAR_IZQ Parametros PAR_DER Bloque   { free($2); }
     ;
 
 Parametros

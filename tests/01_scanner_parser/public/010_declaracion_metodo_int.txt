@@ -1,0 +1,15 @@
+// Chequeo de declaracion de método con retorno diferente a void
+int x;
+int main() {
+    int b;
+    
+    b = metodo();
+
+    return b;
+}
+
+int metodo(){
+    return 8 + 2;
+}
+
+
