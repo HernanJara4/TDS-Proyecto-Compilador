@@ -1,0 +1,63 @@
+Me parece una excelente decisión de diseño ir por un **Nodo Genérico**. Como ya venís trabajando en la construcción y evaluación de árboles abstractos en C, esta estructura uniforme te va a resultar muy familiar y cómoda de recorrer.
+
+* **Ventaja principal:** Tal como decís, simplifica enormemente el `%union` de Bison. Solo vas a necesitar definir un tipo de puntero (por ejemplo, `struct Nodo *`) y todas tus reglas de expresiones, sentencias y bloques van a devolver ese mismo tipo. Te ahorra un montón de casteos y problemas de tipado cruzado en C.
+* **Lo que hay que tener en cuenta (Trade-off):** Tu `struct` se va a convertir en lo que se llama un *"fat node"* (nodo gordo). Va a necesitar alojar un campo `enum` para saber qué tipo de nodo es (ej. `NODO_IF`, `NODO_SUMA`, `NODO_VAR`), punteros a los hijos (izquierdo, derecho, o quizás un arreglo/lista si tiene muchos hijos como un bloque), y campos para guardar valores (el `int`, el `float` o el `char*` para el identificador). Aunque un nodo `NODO_WHILE` no use el campo del valor `float`, la memoria se reservará igual. Para el alcance de este compilador, este leve desperdicio de memoria es insignificante comparado con la enorme agilidad de desarrollo que te da.
+
+Ahora, sobre tu gran duda: **¿Un único AST para todo el código o múltiples ASTs (uno por función)?**
+
+Analicemos las dos opciones viables teniendo en cuenta las reglas del lenguaje C-TDS:
+
+**Opción A: Un bosque de ASTs (Múltiples árboles)**
+Consistiría en guardar las declaraciones de variables globales directamente en la Tabla de Símbolos a medida que las parseas, y solo crear un AST por cada método/función.
+
+* *Pro:* Los árboles son más chicos y manejables. Cuando llegues a la generación de código, podés compilar función por función de manera aislada.
+* *Contra:* Perdés la representación estructural del archivo completo en memoria. El nodo raíz de tu gramática queda sin una representación física unificada.
+
+**Opción B: Un único AST global (Monolítico)**
+Todo el programa es un solo árbol. La raíz es un nodo `Programa`, que se divide en dos ramas principales: una lista de hijos que son las declaraciones globales, y otra lista de hijos que son las declaraciones de métodos.
+
+* *Pro:* Mapea de forma exacta uno a uno con la gramática que ya escribiste, cuyo axioma es `Programa : ListaVarDecl ListaMethodDecl`.
+
+
+* *Pro:* Hace que el recorrido semántico sea sumamente lineal. Entrás por la raíz, recorrés la rama de globales (insertándolas en el *scope* global de la Tabla de Símbolos), y luego entrás a la rama de métodos, donde por cada método abrís un *scope* local nuevo.
+
+
+
+**Conclusión recomendada:**
+Te sugiero fuertemente ir por **un único AST global (Opción B)**. El documento especifica que el análisis semántico se realiza sobre el árbol de parsing. Tener un único árbol te permite iniciar tu fase semántica llamando a una sola función `analizar_semantica(raiz_programa)`, la cual irá bajando recursivamente, poblando la tabla de símbolos y verificando los tipos al mismo tiempo. Es la forma más natural y menos propensa a errores para manejar los alcances globales y locales anidados.
+
+---
+
+Me parece una solución brillante y es, de hecho, un patrón de diseño clásico en compiladores escritos en C conocido como *First-Child / Next-Sibling* (Primer Hijo / Siguiente Hermano). Te permite tener lo mejor de ambos mundos: la flexibilidad de listas independientes y la unificación de un árbol global.
+
+**1. El puntero "Siguiente" (Hermano)**
+Para materializar esa "lista de ASTs", tu Nodo Genérico solo necesita incluir un puntero adicional (por ejemplo, `siguiente`). Así, una secuencia de declaraciones, sentencias o métodos se convierte en una simple lista enlazada de nodos. No hace falta que sea doblemente enlazada; una lista simple es suficiente para recorrerla linealmente y te ahorra el dolor de cabeza de mantener punteros adicionales.
+
+**2. La estructura limpia de la Raíz**
+Tu nodo raíz (`Programa`) puede ser un nodo genérico que apunte a dos cabeceras de lista: el inicio de la lista enlazada de variables globales y el inicio de la lista enlazada de métodos. Esto mapea perfectamente con cómo lee un humano el código.
+
+**3. Sinergia total con la Pila de Niveles de la TS**
+Esta estructura lineal por bloques hace que llenar la Tabla de Símbolos con su arquitectura de "pila de niveles" sea sumamente orgánico:
+
+* Al invocar `analizar_semanticamente(raiz)`, abrís el Nivel 1 (Ámbito Global).
+
+
+* Recorrés tu primera lista (variables globales) insertándolas en ese nivel.
+* Luego iterás sobre tu segunda lista (métodos). Por cada nodo método que visites: insertás su firma en el Nivel 1, inmediatamente abrís un nuevo nivel para su ámbito local, insertás sus parámetros, recorrés la lista enlazada de sentencias de su bloque y, al terminar de procesar ese método, cerrás el nivel.
+
+----
+
+Excelente decisión. Ese puntero **`siguiente`** en tu nodo genérico te va a simplificar la vida al recorrer secuencias de sentencias o declaraciones sin anidar subárboles innecesariamente.
+
+Pasando al diseño de la **Tabla de Símbolos**, la clave es definir qué información debe viajar en el registro (`struct simbolo`) para que el análisis semántico responda correctamente. Basado en el esquema de la cátedra, tu estructura necesita contener:
+
+* El **nombre** del identificador para poder buscarlo.
+
+* El **tipo de dato** (int, float, boolean, void), que será tu herramienta principal para el chequeo de tipos en las expresiones y asignaciones.
+
+* Un **flag o categoría** que diferencie si el símbolo es una variable local, una variable global, un parámetro o una función.
+
+* En el caso de las funciones, es vital agregar una **estructura con sus parámetros** (cantidad y tipos), ya que las reglas semánticas exigen que la invocación coincida exactamente con la declaración original.
+
+
+Para soportar los distintos ámbitos (scope global y scope de funciones o bloques), la arquitectura debe comportarse como una **pila de niveles**. Al entrar a una función o bloque, abrís un nivel nuevo y guardás ahí las declaraciones locales. Al salir, cerrás y destruís el nivel, lo que maneja de forma automática y segura el ocultamiento de variables con el mismo nombre en scopes anidados.
