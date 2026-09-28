@@ -4,16 +4,16 @@ Desarrollo de un compilador incremental para el lenguaje de programación C-TDS.
 
 ### Compilar parser
 1. Ejecutar flex
-flex -o src/build/lex.yy.c src/scanner/Gramatica.l
+flex -o build/lex.yy.c src/scanner/Gramatica.l
 
 2. Ejecutar bison
-bison -d -o src/build/Gramatica.tab.c src/parser/Gramatica.y
+bison -d -o build/Gramatica.tab.c src/parser/Gramatica.y
 
 3. Compilar
-gcc -I src/build -o bin/compilador src/build/Gramatica.tab.c src/build/lex.yy.c
+gcc -I build/ -o build/compilador build/Gramatica.tab.c build/lex.yy.c
 
 ### Ejecutar tests
 
-> bin/c-tds tests/01_scanner_parser/public/0...
+> build/c-tds tests/01_scanner_parser/public/0...
 
 Y luego se selecciona el número de test que se desee ejecutar (0, 1, 2, etc), apretando `tab` se completa automáticamente
