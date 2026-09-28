@@ -10,7 +10,7 @@ flex -o build/lex.yy.c src/scanner/Gramatica.l
 bison -d -o build/Gramatica.tab.c src/parser/Gramatica.y
 
 3. Compilar
-gcc -I build/ -o build/compilador build/Gramatica.tab.c build/lex.yy.c
+gcc -I build/ -o build/c-tds build/Gramatica.tab.c build/lex.yy.c
 
 ### Ejecutar tests
 
