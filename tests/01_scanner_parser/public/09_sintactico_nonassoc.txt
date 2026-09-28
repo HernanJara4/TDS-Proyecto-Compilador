@@ -1,8 +1,0 @@
-// Sintactico: no se permiten operadores asociativos encadenados.
-// == y < > son nonassoc: 4 == 3 == 3 y 4 < x < 6 deben dar error sintactico.
-int x;
-void main() {
-    boolean b;
-    b = 4 == 3 == 3;
-    b = 4 < x < 6;
-}

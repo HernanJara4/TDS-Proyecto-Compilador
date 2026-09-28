@@ -69,10 +69,15 @@ Declaracion
     | MethodDecl
     ;
 
-/* ---------- Declaraciones de variables ---------- */
+/* ---------- Declaraciones de variables globales y metodos ---------- */
 
 VarDecl
-    : Tipo ListaId PUNTO_Y_COMA
+    : Tipo ID RestoVarDecl   { free($2); }
+    ;
+
+RestoVarDecl
+    : PUNTO_Y_COMA
+    | COMA ListaId PUNTO_Y_COMA
     ;
 
 ListaId
