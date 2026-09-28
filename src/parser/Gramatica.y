@@ -54,7 +54,19 @@ int errores_sintacticos = 0;
 %%
 
 Programa
-    : ListaVarDecl ListaMethodDecl
+    : ListaDeclaraciones
+    ;
+
+/* ---------- Declaraciones globales (variables y metodos) ---------- */
+
+ListaDeclaraciones
+    : ListaDeclaraciones Declaracion
+    | /* lambda */
+    ;
+
+Declaracion
+    : VarDecl
+    | MethodDecl
     ;
 
 /* ---------- Declaraciones de variables ---------- */
@@ -76,18 +88,9 @@ Tipo
 
 /* ---------- Declaraciones de metodos ---------- */
 
-ListaMethodDecl
-    : ListaMethodDecl MethodDecl
-    | /* lambda */
-    ;
-
 MethodDecl
-    : TipoRetorno ID PAR_IZQ Parametros PAR_DER Bloque   { free($2); }
-    ;
-
-TipoRetorno
-    : Tipo
-    | TIPO_VOID
+    : Tipo ID PAR_IZQ Parametros PAR_DER Bloque        { free($2); }
+    | TIPO_VOID ID PAR_IZQ Parametros PAR_DER Bloque   { free($2); }
     ;
 
 Parametros
