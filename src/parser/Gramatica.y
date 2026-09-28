@@ -59,11 +59,6 @@ Programa
 
 /* ---------- Declaraciones de variables ---------- */
 
-ListaVarDecl
-    : ListaVarDecl VarDecl
-    | /* lambda */
-    ;
-
 VarDecl
     : Tipo ListaId PUNTO_Y_COMA
     ;
