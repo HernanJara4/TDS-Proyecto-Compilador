@@ -1,0 +1,70 @@
+Con este `.y` (que ya compila sin warnings) lo que hay que documentar son cuatro cosas: el problema, las alternativas que se evaluaron, la solución elegida y las decisiones de diseño que quedaron en el archivo. Te lo dejo armado para copiar y adaptar.
+
+## 1. Cambios respecto de la gramática del PDF
+
+El PDF define:
+
+```
+program     → var_decl* method_decl*
+method_decl → (type | void) id ( ... ) block
+```
+
+La gramática implementada define:
+
+```
+Programa           → ListaDeclaraciones
+ListaDeclaraciones → ListaDeclaraciones Declaracion | λ
+Declaracion        → VarDecl | MethodDecl
+MethodDecl         → Tipo ID ( Parametros ) Bloque
+                   | TIPO_VOID ID ( Parametros ) Bloque
+```
+
+Son dos cambios:
+
+- **Una sola lista de declaraciones globales**, en lugar de la lista de variables seguida de la lista de métodos.
+- **Se eliminó el no terminal intermedio `TipoRetorno`.** `MethodDecl` escribe `Tipo` y `void` como dos alternativas directas.
+
+`VarDecl`, `ListaId`, `Tipo`, `Parametros` y todo lo demás quedó igual que en el PDF.
+
+## 2. El problema que motivó los cambios
+
+Con la gramática literal del PDF, bison reportaba **3 conflictos shift/reduce**, uno por cada `int`, `boolean` y `float`.
+
+El conflicto aparece justo al terminar la lista de variables globales. El parser tiene el token `int` por delante y tiene que decidir entre dos cosas:
+
+- **Shift:** ese `int` empieza otra declaración de variable, así que sigue agregando a `ListaVarDecl`.
+- **Reduce:** cierra `ListaVarDecl`, y ese `int` es el tipo de retorno del primer método.
+
+Las dos opciones son válidas con el mismo token. La diferencia real recién se ve dos tokens después, del `int`: si viene `,` o `;` es una variable, y si viene `(` es un método. LALR(1) solo mira un token de anticipación, así que no puede tomar esa decisión.
+
+Es un caso real y no un falso positivo. Si se dejaba la resolución por defecto de bison, que es preferir shift, el parser habría interpretado siempre `int` como inicio de variable. Entonces habría rechazado el ejemplo del propio enunciado, que empieza con `int inc(int x) {...}` y no tiene variables globales.
+
+Sacar `TipoRetorno` es la parte que resuelve el conflicto de fondo. Si se conserva ese no terminal, el mismo problema reaparece un escalón más abajo. Después de reducir `Tipo`, el parser tendría que decidir con `ID` como lookahead si reduce `Tipo → TipoRetorno` (método) o shiftea el `ID` directamente (variable). Con las dos alternativas escritas directo en `MethodDecl`, después de `Tipo` la única acción posible es shiftear `ID`. Los dos caminos comparten ese paso, y recién con `Tipo ID` completo el token siguiente los distingue: `,` o `;` para variable, `(` para método. Esos conjuntos no se pisan, así que un token de anticipación alcanza.
+
+## 3. Alternativas evaluadas
+
+| Alternativa | Por qué se descartó |
+|---|---|
+| Dejar el conflicto y usar el shift por defecto | Rechaza programas válidos, incluido el ejemplo del enunciado |
+| Precedencia (`%left`, `%prec`) | La elección correcta cambia según lo que viene dos tokens después, y la precedencia es una regla fija que no puede mirar hacia adelante |
+| Parser GLR (`%glr-parser`) | Funciona sin tocar la gramática, pero agrega complejidad al parser generado y a la depuración, y no se quiso depender de eso |
+| Lexer con lookahead propio (devolver tokens distintos para tipo de variable y tipo de método) | Hace falta un buffer de tokens en `yylex()`, con más código y más riesgo de errores sutiles, por ejemplo con el conteo de líneas |
+| `left-factoring` de `VarDecl` con un no terminal auxiliar (`RestoVarDecl`) | Se probó que no hace falta: sin él compila sin conflictos, así que se mantuvo `VarDecl` como en el PDF |
+
+## 4. Qué se pierde con la solución elegida
+
+La gramática ya no exige a nivel sintáctico que todas las variables globales vayan antes que todos los métodos. Se pueden intercalar. El conjunto de programas válidos es el mismo salvo ese orden.
+
+Esto es aceptable porque la regla semántica 2 del PDF ("ningún identificador se usa antes de ser declarado") ya controla el orden que importa, posición por posición. Si la cátedra exigiera el orden estricto, se puede verificar en el análisis semántico sin tocar la gramática.
+
+## 5. Otras decisiones de diseño para la sección de "Decisiones y asunciones"
+
+- **`while` sin paréntesis.** La gramática del PDF escribe `while ⟨expr⟩ ⟨block⟩` sin paréntesis, y se implementó tal cual. En cambio, `if` sí lleva paréntesis, también según el PDF. Conviene confirmar con la cátedra si es una errata, porque el resto de la especificación y los ejemplos usan sintaxis estilo C.
+- **Precedencia de operadores.** Se declara en bison de menor a mayor, siguiendo la tabla del PDF. `==`, `<` y `>` son `%nonassoc`, porque encadenarlos (`a < b < c`) no tiene sentido. `-` unario usa un token auxiliar `UMENOS` con `%prec`, porque `OP_RESTA` ya tiene la precedencia de la resta binaria.
+- **No hay `else` colgante.** Como `if` y `else` exigen `Bloque` (siempre entre llaves), no puede haber ambigüedad sobre a qué `if` pertenece un `else`. Por eso no aparecen conflictos por ese lado.
+- **Recuperación de errores.** La regla `error PUNTO_Y_COMA` en `Sentencia` descarta la sentencia con error y sigue, así se pueden informar varios errores sintácticos en una sola corrida. `yyerrok` sale del modo de recuperación.
+- **Identificadores.** El lexer hace `strdup` en cada `ID` y las acciones lo liberan con `free`, ya que en esta etapa no se guarda ningún nombre. Cuando llegue la tabla de símbolos habrá que revisar quién es dueño de esas cadenas.
+- **Alcance de la etapa.** Solo se verifica sintaxis: no hay AST ni chequeos semánticos. Reglas como la existencia de `main`, tipos y scopes se dejan para la Etapa 2.
+
+
+

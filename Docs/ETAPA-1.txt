@@ -1,0 +1,185 @@
+Dale, vamos por partes. Empiezo rápido con el `.l` porque ya lo veníamos usando, y me detengo más en el `.y` que es donde están las herramientas que no viste antes.
+
+## Gramatica.l (repaso rápido)
+
+```c
+%{
+#include ...
+#include "Gramatica.tab.h"
+extern int errores_lexicos;
+%}
+```
+Esto es código C que se copia literal al principio del archivo generado (`lex.yy.c`). `Gramatica.tab.h` es el header que **genera bison** con los códigos numéricos de cada token (`TIPO_INT`, `ID`, etc.) — por eso el lexer necesita incluirlo, para poder hacer `return ID;` y que ese número coincida con el que espera el parser.
+
+```c
+%option noyywrap
+%option yylineno
+```
+- `noyywrap`: le dice a flex que no llame a la función `yywrap()` al llegar a EOF (esa función normalmente sirve para "encadenar" varios archivos de entrada; como usamos uno solo, la desactivamos).
+- `yylineno`: activa una variable global `yylineno` que flex actualiza sola cada vez que reconoce un `\n`. Por eso en los mensajes de error puedo escribir `yylineno` sin llevar la cuenta yo mismo.
+
+```c
+%x COMENTARIO
+```
+Define un **estado exclusivo** (`x` de "exclusive"). Un estado es un "modo" del lexer. Por defecto está en `INITIAL`. Cuando flex ve `/*`, hace `BEGIN(COMENTARIO)`, y mientras esté en ese estado **solo** se activan las reglas que empiezan con `<COMENTARIO>` (por eso es "exclusive": ignora todas las reglas normales hasta que se vuelva a `INITIAL`). Es la forma estándar de manejar comentarios multilínea en flex, porque una sola expresión regular no puede decir bien "todo lo que no sea `*/`".
+
+Las macros (`LETRA`, `DIGITO`, `ID`, etc.) son solo azúcar sintáctica: definís un nombre para una regex y después la usás entre `{}` en las reglas, para no repetir el patrón largo cada vez.
+
+El resto ya lo conocías: cada regla es `patrón { acción }`, y flex siempre elige la coincidencia más larga posible (por eso `FLOTANTE` matchea `3.5` completo aunque `NRO` también podría matchear el `3` solo).
+
+## Gramatica.y (esto es lo nuevo)
+
+Un archivo de bison tiene 3 secciones separadas por `%%`:
+
+```
+declaraciones
+%%
+reglas de la gramática
+%%
+código C
+```
+
+### 1. El bloque `%{ ... %}`
+
+Igual que en flex: código C que se pega tal cual al generado (`Gramatica.tab.c`). Ahí declaro `errores_lexicos` y `errores_sintacticos` como variables globales, y hago `extern` de cosas que en realidad **vive en el archivo del lexer** (`yylineno`, `yytext`, `yyin`) porque el `.c` generado por bison y el generado por flex se compilan juntos y comparten esas variables globales.
+
+### 2. `%union`
+
+```c
+%union {
+    int    ival;
+    double fval;
+    char  *sval;
+}
+```
+
+Esto es la parte más importante para entender todo lo demás. En yacc/bison, cada símbolo (terminal o no terminal) puede tener un **valor semántico** asociado — no solo "reconocí un ID", sino "reconocí el ID que dice `contador`". Como en C no existen genéricos, bison resuelve esto con un `union`: un tipo de dato que puede guardar *uno* de varios tipos distintos según el caso. `%union` define cuáles son esos tipos posibles. Bison genera automáticamente un typedef `YYSTYPE` con esa unión.
+
+Cuando el lexer hace `yylval.sval = strdup(yytext); return ID;`, lo que está haciendo es: "guardo el string en el campo `sval` de la unión global `yylval`, y le aviso al parser que el token es un ID". El parser después puede leer ese valor.
+
+### 3. `%token`
+
+```c
+%token TIPO_INT TIPO_BOOLEAN TIPO_FLOAT TIPO_VOID
+%token <sval> ID
+%token <ival> NRO
+```
+
+`%token NOMBRE` declara un terminal (un tipo de token) y bison le asigna un número entero único, que vuelca en `Gramatica.tab.h` (por eso el lexer puede hacer `return TIPO_INT`).
+
+El `<sval>` entre `<>` le dice a bison: "este token, cuando aparezca, va a traer un valor semántico, y ese valor está guardado en el campo `sval` de la unión". Fijate que `TIPO_INT` no tiene `<...>` porque no necesito guardar ningún dato extra — solo me importa que apareció esa palabra reservada, no hay "valor" que llevar.
+
+### 4. Precedencia: `%left`, `%right`, `%nonassoc`
+
+Esta es la parte que seguro te resulta más rara. El problema que resuelven es la **ambigüedad de las expresiones**. Mi regla de gramática es:
+
+```
+Expr : Expr OP_SUMA Expr | Expr OP_MULT Expr | ...
+```
+
+Con algo como `2 + 3 * 4`, esta gramática **por sí sola es ambigua**: el parser no sabe si agrupar `(2+3)*4` o `2+(3*4)` (una decisión de "reduce" vs "reduce" con distinta forma del árbol), ni tampoco sabe, con `2 - 3 - 4`, si agrupar de izquierda a derecha o al revés (una decisión "shift vs reduce"). Bison, al construir la tabla de parsing LALR, se encuentra con estos conflictos y por defecto tira warnings y resuelve de alguna forma medio arbitraria — a menos que le digamos explícitamente qué hacer.
+
+```c
+%left OP_OR
+%left OP_AND
+%nonassoc OP_IGUAL
+%nonassoc OP_MENOR OP_MAYOR
+%left OP_SUMA OP_RESTA
+%left OP_MULT OP_DIV OP_MOD
+%right OP_NOT
+%right UMENOS
+```
+
+Cada línea:
+- **Le da una precedencia** a los tokens listados. El orden de las líneas importa: **la que está más abajo tiene mayor precedencia**. Por eso `OP_MULT` (más abajo) liga más fuerte que `OP_SUMA` (más arriba) — así se resuelve `2+3*4` como `2+(3*4)`, tal como pide la tabla de precedencia del PDF.
+- **Le da una asociatividad**: `%left` significa que si hay ambigüedad entre dos operadores de la misma línea, se agrupa de izquierda a derecha (`2-3-4` = `(2-3)-4`). `%right` es al revés (útil para el menos unario y el `!`, que naturalmente se leen "de afuera hacia adentro": `--x` se interpretaría como `-(-x)`). `%nonassoc` dice "no se puede encadenar": no tiene sentido escribir `a == b == c` ni `a < b < c`, entonces si el parser encuentra eso, tira error en vez de elegir una agrupación.
+
+¿Cómo sabe bison qué precedencia tiene **una regla completa** (no solo un token)? Por defecto, la regla toma la precedencia de **su último terminal**. Por eso en:
+
+```c
+Expr : Expr OP_SUMA Expr { ... }
+```
+
+la regla completa tiene la precedencia de `OP_SUMA`. Cuando el parser está parado en un punto donde podría hacer *shift* (seguir leyendo, por ejemplo ver el `*` que viene después) o *reduce* (cerrar la suma que ya tiene), compara la precedencia del token que tiene por delante contra la precedencia de la regla que reduciría, y elige la de mayor precedencia. Así resuelve todos los shift/reduce de operadores automáticamente, sin que yo tenga que escribir una gramática en capas (`Expr -> Term -> Factor -> ...`), que sería la alternativa "sin trampa" pero mucho más larga de escribir.
+
+### `%prec UMENOS`
+
+```c
+| OP_RESTA Expr %prec UMENOS
+```
+
+`UMENOS` fijate que **no aparece nunca** en el lexer devolviendo ese token — es un token "fantasma" que declaré solo para usarlo como marcador de precedencia (`%right UMENOS` en la lista de arriba). El problema es que `OP_RESTA` ya tiene una precedencia (la de la resta binaria, `2-3`), pero acá lo estoy usando para el **menos unario** (`-x`), que en la tabla del PDF tiene la precedencia más alta de todas, más alta que la resta común. Como por defecto la regla tomaría la precedencia de `OP_RESTA` (la de la resta, no la del unario), `%prec UMENOS` le dice a bison: "ignorá la precedencia por defecto de esta regla, usá la de `UMENOS`". Es la forma estándar de manejar el menos unario en yacc.
+
+### 5. `%define parse.error verbose`
+
+Es solo una opción de bison para que los mensajes de error que arma automáticamente (el string `s` que le llega a `yyerror`) sean más descriptivos: en vez de decir simplemente `"syntax error"`, intenta armar algo como `"syntax error, unexpected ID, expecting ';'"`.
+
+### 6. `%start Programa`
+
+Le dice a bison cuál es el no terminal "raíz" de la gramática, el que representa un programa completo. Si no lo pongo, bison asume que es el primer no terminal que aparece en las reglas — lo pongo explícito para que quede claro.
+
+### 7. Las reglas (la sección entre los dos `%%`)
+
+Acá la sintaxis es:
+
+```
+NoTerminal
+    : alternativa1  { acción1 }
+    | alternativa2  { acción2 }
+    ;
+```
+
+Cada alternativa es una secuencia de símbolos (terminales o no terminales). El `|` separa las distintas formas posibles de derivar ese no terminal. La `{ ... }` es código C que se ejecuta **cuando esa alternativa se reduce** (es decir, cuando el parser confirma que reconoció completa esa secuencia).
+
+Dentro de la acción, `$$`, `$1`, `$2`, `$3`... son la forma de referirse a los valores semánticos:
+- `$1` es el valor semántico del primer símbolo de esa alternativa, `$2` el segundo, etc.
+- `$$` es el valor semántico que le vas a asignar **al no terminal completo** (lo que van a poder leer las reglas que lo usen a él como `$N` más arriba en el árbol).
+
+Ejemplo:
+```c
+ListaId
+    : ID                     { free($1); }
+    | ListaId COMA ID        { free($3); }
+    ;
+```
+En la primera alternativa, `$1` es el `char *` que trajo el token `ID` (guardado por el lexer con `strdup`). Como en esta etapa no necesito guardar el nombre en ningún lado (no hay tabla de símbolos todavía), simplemente lo libero con `free()` para no generar fugas de memoria. Nunca asigno `$$`, entonces bison usa su comportamiento por defecto: `$$ = $1` (copia el valor del primer símbolo), aunque acá ese valor no lo uso para nada, es inofensivo.
+
+En la segunda alternativa, `ListaId COMA ID` tiene 3 símbolos: `$1` = valor de `ListaId`, `$2` = valor de `COMA` (no tiene, porque `COMA` no tiene `<tipo>` asociado), `$3` = el string del último `ID`. Por eso libero `$3`.
+
+Fijate que en reglas donde no hay ningún dato que importe (como `Tipo : TIPO_INT | TIPO_BOOLEAN | TIPO_FLOAT ;`) no puse ninguna acción — no necesito hacer nada, ya con reconocer la secuencia alcanza para esta etapa.
+
+### 8. Recursión para las listas
+
+```c
+ListaVarDecl
+    : ListaVarDecl VarDecl
+    | /* epsilon */
+    ;
+```
+
+Esto es el patrón estándar en yacc para representar "cero o más" (el `*` de la notación EBNF del PDF). No existe un operador `*` en la gramática de bison como en las expresiones regulares de flex — hay que armarlo a mano con recursión. Acá es **recursión izquierda** (`ListaVarDecl` aparece primero en su propia regla), que es la forma preferida en yacc porque LALR la procesa con una pila que no crece de forma descontrolada (al revés de la recursión derecha, que consume más memoria de pila). La alternativa vacía (`/* epsilon */`, sin ningún símbolo) es el caso base que corta la recursión.
+
+### 9. `error` y `yyerrok`
+
+```c
+| error PUNTO_Y_COMA
+    {
+        fprintf(stderr, "Se descarta la sentencia con error...\n");
+        yyerrok;
+    }
+```
+
+`error` es un token especial reservado de bison, no algo que yo declaro. Cuando el parser encuentra una secuencia que no matchea ninguna regla, entra en "modo pánico": va descartando símbolos de la entrada hasta encontrar un punto donde `error` sí encaje en alguna regla — en este caso, hasta encontrar un `;`. Ahí ejecuta esta acción y sigue parseando normalmente después del `;`, en vez de abortar todo. `yyerrok` es una macro que le dice al parser "considerá que ya te recuperaste del error, volvé a tu estado normal" (si no la llamás, bison sigue en un estado de "todavía frágil" y puede llegar a ignorar el próximo error real). Esto es lo que me permite reportar **varios** errores sintácticos en una sola corrida, en vez de frenar en el primero.
+
+### 10. La tercera sección: código C final
+
+```c
+void yyerror(const char *s) { ... }
+int main(int argc, char **argv) { ... }
+```
+
+`yyerror` es una función que **el propio bison llama automáticamente** cada vez que detecta un error sintáctico que no puede recuperar solo (antes de entrar en modo pánico). Yo tengo que definirla porque bison la declara pero no la implementa — es responsabilidad mía decidir qué hacer con el mensaje de error (acá: imprimirlo con la línea y contar).
+
+`yyparse()` es la función principal que genera bison a partir de toda la gramática — es el parser en sí. La llamo desde `main()`, y ella internamente va pidiendo tokens llamando a `yylex()` (la función que generó flex) cada vez que necesita el próximo símbolo.
+
+---
