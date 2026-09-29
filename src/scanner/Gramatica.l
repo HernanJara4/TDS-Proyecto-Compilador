@@ -5,6 +5,16 @@
 #include "Gramatica.tab.h"
 
 extern int errores_lexicos; /* Contador global de errores lexicos, definido en Gramatica.y */
+
+/* Con %locations en Gramatica.y, bison expone yylloc y el tipo YYLTYPE
+ * (ambos declarados en Gramatica.tab.h). YY_USER_ACTION se ejecuta antes
+ * de la accion de CADA regla reconocida, asi que con esto cada token
+ * queda con su propia linea en yylloc, y las acciones del parser pueden
+ * usar @1, @2, etc. para saber en que linea del fuente ocurrio cada
+ * construccion (se usa para que los nodos del AST guarden su "linea"). */
+#define YY_USER_ACTION \
+    yylloc.first_line = yylloc.last_line = yylineno;
+
 %}
 
 %option noyywrap
