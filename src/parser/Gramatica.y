@@ -5,7 +5,7 @@
 %}
 
 %code requires {
-    #include "ast.h"
+    #include "../../include/ast.h"
 }
 
 %code {
@@ -46,6 +46,13 @@
 
 /* ---------- Delimitadores ---------- */
 %token COMA PUNTO_Y_COMA PAR_IZQ PAR_DER LLAVE_IZQ LLAVE_DER
+
+/* ---------- Tipos de los no terminales ---------- */
+%type <sval> Tipo
+%type <nodo> Programa ListaDeclaraciones Declaracion
+%type <nodo> VarDecl ListaId MethodDecl Parametros ListaParametros
+%type <nodo> Bloque ListaVarDeclLocal ListaSentencia Sentencia
+%type <nodo> LlamadaMetodo ListaArgs ListaExpr Expr Literal
 
 /* ---------- Precedencia (de menor a mayor), segun la especificacion ---------- */
 %left OP_OR
