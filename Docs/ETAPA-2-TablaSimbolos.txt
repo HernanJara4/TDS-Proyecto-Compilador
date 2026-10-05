@@ -1,0 +1,41 @@
+/* =====================================================================
+ * ts.h
+ * Tabla de Simbolos (TS) del compilador C-TDS - Etapa 2
+ *
+ * Diseno: pila de niveles (arreglo estatico de listas enlazadas).
+ *  - TS[0] es el scope global. TS[1..MAX_NIVELES-1] son scopes locales.
+ *  - nivel_actual indica el nivel donde se inserta/busca en este momento.
+ *  - AbrirNivel/CerrarNivel se llaman al entrar y salir de CUALQUIER
+ *    NODE_BLOQUE del AST (no solo el de un metodo), tal como lo pide el
+ *    PDF: el cuerpo de un if, de un while, o un bloque suelto tambien
+ *    abren su propio scope. El scope de los parametros de un metodo se
+ *    abre junto con el bloque de su cuerpo (mismo nivel: los parametros
+ *    son, a todos los efectos de alcance, variables locales del metodo).
+ *
+ * Reutilizacion de Simbolo (ast.h):
+ *  - EntradaTS NO duplica nombre/tipo en campos propios: guarda un
+ *    puntero al MISMO Simbolo* que ya cuelga del nodo del AST
+ *    (nodo->simbolo). Es un solo dato en memoria, compartido entre el
+ *    AST y la TS; cualquier etapa posterior que recorra el AST ve el
+ *    mismo Simbolo que uso el analisis semantico.
+ *  - entrada->simbolo->nombre_id = nombre del identificador.
+ *  - entrada->simbolo->tipo_dato = tipo de la variable/parametro, o
+ *    tipo de RETORNO si la entrada es una funcion (coincide con como
+ *    ya se arma NODE_METODO en el parser: tipo_dato = tipo de retorno).
+ *  - Los tipos se siguen representando como char* ("int","float",
+ *    "boolean","void"), igual que en el AST, para no tener dos
+ *    representaciones del mismo concepto dando vueltas. Las
+ *    comparaciones de tipo en el motor semantico van con strcmp.
+ *
+ * Propiedad de memoria (IMPORTANTE para cuando se implemente el .c):
+ *  - Como entrada->simbolo es prestado del AST (nunca se duplica con
+ *    strdup), CerrarNivel() debe hacer free() de cada EntradaTS (el
+ *    nodo de la lista en si: el "envoltorio"), pero NUNCA de
+ *    entrada->simbolo ni de nada que cuelgue de el. Ese Simbolo lo
+ *    sigue siendo dueño el AST y se libera una sola vez, al final, con
+ *    liberar_ast(). Liberarlo tambien en CerrarNivel seria un doble
+ *    free cuando mas tarde se llame a liberar_ast().
+ *  - Lo mismo aplica a tipos_parametros: cada elemento es el mismo
+ *    puntero char* que ya vive en el Simbolo del nodo parametro
+ *    correspondiente (prestado, no duplicado, no se libera aca).
+ * ===================================================================== *
