@@ -5,7 +5,7 @@
 %}
 
 %code requires {
-    #include "../../include/ast.h"
+    #include "ast.h"
 }
 
 %code {

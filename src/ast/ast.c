@@ -4,21 +4,21 @@ ASTNode *raiz_ast = NULL;
 
 
 ASTNode *crear_nodo( TipoNodo tipoNodo, int linea, char *tipo_dato, char *nombre_id, char *valor, ASTNode *hijo1, ASTNode *hijo2, ASTNode *hijo3) {
-    
+
     ASTNode *nodo = (ASTNode *)malloc(sizeof(ASTNode));
-    
+
     if (nodo == NULL) {
         fprintf(stderr, "Error interno: sin memoria para crear un nodo del AST\n");
         exit(1);
     }
 
     Simbolo *simbolo = (Simbolo *)malloc(sizeof(Simbolo));
-    
+
     if (simbolo == NULL) {
         fprintf(stderr, "Error interno: sin memoria para crear un simbolo\n");
         exit(1);
     }
-    
+
     simbolo->tipo_dato = tipo_dato;
     simbolo->nombre_id = nombre_id;
     simbolo->valor     = valor;
@@ -39,23 +39,23 @@ ASTNode *crear_nodo( TipoNodo tipoNodo, int linea, char *tipo_dato, char *nombre
  * --------------------------------------------------------------------- */
 
 ASTNode *agregar_a_lista(ASTNode *lista, ASTNode *nuevo) {
-    
+
     if (lista == NULL) return nuevo;
     if (nuevo == NULL) return lista;
 
     ASTNode *ultimo = lista;
-    
+
     while (ultimo->siguiente != NULL)
         ultimo = ultimo->siguiente;
     ultimo->siguiente = nuevo;
-    
+
     return lista;
 }
 
 void asignar_tipo_lista(ASTNode *lista, char *tipo_dato) {
-   
+
     for (ASTNode *n = lista; n != NULL; n = n->siguiente) {
-        
+
         if (n->simbolo != NULL) {
             free(n->simbolo->tipo_dato);   /* deberia ser NULL, por las dudas */
             n->simbolo->tipo_dato = strdup(tipo_dato);
