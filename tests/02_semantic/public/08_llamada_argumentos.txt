@@ -1,0 +1,14 @@
+// Etapa 2 - regla 4: el numero y los tipos de los argumentos de una
+// invocacion deben coincidir con la declaracion del metodo.
+int f(int a, boolean b) {
+    return a;
+}
+
+void main() {
+    int r;
+    r = f(1);
+    r = f(1, true, 2);
+    r = f(1, 1);
+    r = f(true, false);
+    return;
+}

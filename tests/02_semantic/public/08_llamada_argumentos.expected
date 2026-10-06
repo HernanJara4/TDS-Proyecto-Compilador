@@ -1,0 +1,9 @@
+### EXIT: 1
+### STDOUT
+### STDERR
+Error semantico en linea 9: la invocacion a 'f' recibe 1 argumento/s pero 'f' declara 2 (regla 4)
+Error semantico en linea 10: la invocacion a 'f' recibe 3 argumento/s pero 'f' declara 2 (regla 4)
+Error semantico en linea 11: el argumento 2 de la invocacion a 'f' tiene tipo 'int' y se esperaba 'boolean' (regla 4)
+Error semantico en linea 12: el argumento 1 de la invocacion a 'f' tiene tipo 'boolean' y se esperaba 'int' (regla 4)
+
+Se encontraron 4 error/es semanticos.

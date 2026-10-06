@@ -1,0 +1,58 @@
+### EXIT: 0
+### STDOUT
+### STDERR
+### SEM
+=== Arbol de Sintaxis Abstracta (anotado con tipos) ===
+PROGRAMA  [linea 1]
+  DECLARACION tipo=int nombre=w  [linea 5]
+  DECLARACION tipo=int nombre=x  [linea 5]
+  DECLARACION tipo=int nombre=y  [linea 5]
+  DECLARACION tipo=int nombre=z  [linea 5]
+  METODO tipo=int nombre=suma3  [linea 7]
+    DECLARACION tipo=int nombre=p  [linea 7]
+    DECLARACION tipo=int nombre=q  [linea 7]
+    DECLARACION tipo=int nombre=r  [linea 7]
+    BLOQUE  [linea 7]
+      DECLARACION tipo=int nombre=tmp  [linea 8]
+      ASIGNACION tipo=int nombre=tmp  [linea 9]
+        ID tipo=int nombre=p  [linea 9]
+      ASIGNACION tipo=int nombre=tmp  [linea 10]
+        OP_BINARIA tipo=int valor="+"  [linea 10]
+          ID tipo=int nombre=tmp  [linea 10]
+          ID tipo=int nombre=q  [linea 10]
+      ASIGNACION tipo=int nombre=tmp  [linea 11]
+        OP_BINARIA tipo=int valor="+"  [linea 11]
+          ID tipo=int nombre=tmp  [linea 11]
+          ID tipo=int nombre=r  [linea 11]
+      RETORNO  [linea 12]
+        ID tipo=int nombre=tmp  [linea 12]
+  METODO tipo=void nombre=main  [linea 15]
+    BLOQUE  [linea 15]
+      DECLARACION tipo=int nombre=m  [linea 16]
+      DECLARACION tipo=int nombre=n  [linea 16]
+      ASIGNACION tipo=int nombre=m  [linea 17]
+        NRO tipo=int valor="1"  [linea 17]
+      ASIGNACION tipo=int nombre=n  [linea 18]
+        NRO tipo=int valor="2"  [linea 18]
+      ASIGNACION tipo=int nombre=w  [linea 19]
+        LLAMADA tipo=int nombre=suma3  [linea 19]
+          ID tipo=int nombre=m  [linea 19]
+          ID tipo=int nombre=n  [linea 19]
+          NRO tipo=int valor="3"  [linea 19]
+      ASIGNACION tipo=int nombre=x  [linea 20]
+        NRO tipo=int valor="4"  [linea 20]
+      ASIGNACION tipo=int nombre=y  [linea 21]
+        NRO tipo=int valor="5"  [linea 21]
+      ASIGNACION tipo=int nombre=z  [linea 22]
+        NRO tipo=int valor="6"  [linea 22]
+      RETORNO  [linea 23]
+
+=== Tabla de Simbolos ===
+Nota: al terminar el analisis solo persiste el ambito global, los niveles locales se destruyen al cerrarse.
+Nivel 0 (global):
+  'main' : void  (funcion)  linea 15, sin parametros
+  'suma3' : int  (funcion)  linea 7, 3 parametros: [int, int, int]
+  'z' : int  (variable global)  linea 5
+  'y' : int  (variable global)  linea 5
+  'x' : int  (variable global)  linea 5
+  'w' : int  (variable global)  linea 5

@@ -1,0 +1,24 @@
+// Etapa 2 - regla 14: se permiten coerciones y truncamientos entre
+// int y float. Este programa no debe reportar ningun error:
+// asignaciones int<->float, aritmetica mezclada, == entre int y float,
+// argumento int para parametro float y return int de una expresion
+// float.
+int calcula(float f) {
+    return f;
+}
+
+void main() {
+    int i;
+    float r;
+    i = 1;
+    r = 2;
+    r = r + i;
+    i = r * 2;
+    r = i;
+    if (i == r) {
+        i = 0;
+    }
+    i = calcula(3);
+    r = calcula(4);
+    return;
+}

@@ -1,0 +1,23 @@
+// Etapa 2 - reglas 5, 8 y 4: usos ilegales de identificadores.
+//   - "a = nada()"   regla 5: una invocacion void no puede usarse como
+//                    expresion
+//   - "a = f"        regla 8: una funcion no puede usarse como valor
+//   - "a()"          regla 4: no se puede invocar algo que no es una
+//                    funcion
+// (una llamada a f() usada como sentencia seria legal: el resultado se
+// ignora).
+void nada() {
+    return;
+}
+
+int f() {
+    return 1;
+}
+
+void main() {
+    int a;
+    a = nada();
+    a = f;
+    a();
+    return;
+}

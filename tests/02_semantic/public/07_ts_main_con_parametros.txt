@@ -1,0 +1,5 @@
+// Etapa 2 - Tabla de Simbolos: regla 3 - el metodo main no tiene
+// parametros.
+void main(int p) {
+    return;
+}

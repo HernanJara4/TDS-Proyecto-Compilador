@@ -1,0 +1,18 @@
+// Etapa 2 - AST: la forma del arbol debe reflejar la precedencia y la
+// asociatividad de los operadores (la gramatica no las codifica, las
+// resuelve bison con %left/%right y eso queda plasmado en el AST).
+// Esperado: sin errores.
+int a, b, c, d;
+boolean flag;
+
+void main() {
+    a = b + c * d;
+    a = (b + c) * d;
+    a = b - c - d;
+    a = b - (c - d);
+    a = b * c + d;
+    flag = a == b && c < d;
+    flag = !flag || a > b;
+    a = -b + c;
+    return;
+}

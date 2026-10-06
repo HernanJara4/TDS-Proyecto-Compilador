@@ -1,0 +1,49 @@
+### EXIT: 0
+### STDOUT
+### STDERR
+### SEM
+=== Arbol de Sintaxis Abstracta (anotado con tipos) ===
+PROGRAMA  [linea 1]
+  METODO tipo=int nombre=calcula  [linea 6]
+    DECLARACION tipo=float nombre=f  [linea 6]
+    BLOQUE  [linea 6]
+      RETORNO  [linea 7]
+        ID tipo=float nombre=f  [linea 7]
+  METODO tipo=void nombre=main  [linea 10]
+    BLOQUE  [linea 10]
+      DECLARACION tipo=int nombre=i  [linea 11]
+      DECLARACION tipo=float nombre=r  [linea 12]
+      ASIGNACION tipo=int nombre=i  [linea 13]
+        NRO tipo=int valor="1"  [linea 13]
+      ASIGNACION tipo=float nombre=r  [linea 14]
+        NRO tipo=int valor="2"  [linea 14]
+      ASIGNACION tipo=float nombre=r  [linea 15]
+        OP_BINARIA tipo=float valor="+"  [linea 15]
+          ID tipo=float nombre=r  [linea 15]
+          ID tipo=int nombre=i  [linea 15]
+      ASIGNACION tipo=int nombre=i  [linea 16]
+        OP_BINARIA tipo=float valor="*"  [linea 16]
+          ID tipo=float nombre=r  [linea 16]
+          NRO tipo=int valor="2"  [linea 16]
+      ASIGNACION tipo=float nombre=r  [linea 17]
+        ID tipo=int nombre=i  [linea 17]
+      IF  [linea 18]
+        OP_BINARIA tipo=boolean valor="=="  [linea 18]
+          ID tipo=int nombre=i  [linea 18]
+          ID tipo=float nombre=r  [linea 18]
+        BLOQUE  [linea 18]
+          ASIGNACION tipo=int nombre=i  [linea 19]
+            NRO tipo=int valor="0"  [linea 19]
+      ASIGNACION tipo=int nombre=i  [linea 21]
+        LLAMADA tipo=int nombre=calcula  [linea 21]
+          NRO tipo=int valor="3"  [linea 21]
+      ASIGNACION tipo=float nombre=r  [linea 22]
+        LLAMADA tipo=int nombre=calcula  [linea 22]
+          NRO tipo=int valor="4"  [linea 22]
+      RETORNO  [linea 23]
+
+=== Tabla de Simbolos ===
+Nota: al terminar el analisis solo persiste el ambito global, los niveles locales se destruyen al cerrarse.
+Nivel 0 (global):
+  'main' : void  (funcion)  linea 10, sin parametros
+  'calcula' : int  (funcion)  linea 6, 1 parametro: [float]

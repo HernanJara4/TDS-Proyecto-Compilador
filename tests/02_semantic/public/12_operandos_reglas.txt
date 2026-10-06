@@ -1,0 +1,20 @@
+// Etapa 2 - reglas 10, 11 y 12: tipos de los operandos.
+//   - regla 10: aritmeticos/relacionales solo sobre int o float
+//     (% ademas solo admite enteros, ver decision de diseno)
+//   - regla 11: == compara operandos del mismo tipo
+//   - regla 12: && || ! solo sobre boolean
+int a;
+float f;
+boolean b;
+
+void main() {
+    a = a % f;
+    a = b + 1;
+    b = a < b;
+    b = a == b;
+    b = f == a;
+    b = a && b;
+    b = !a;
+    b = (a < b) || (f + a);
+    return;
+}

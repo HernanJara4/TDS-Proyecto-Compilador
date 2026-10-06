@@ -1,0 +1,135 @@
+### ARGS: -debug
+### EXIT: 0
+### STDOUT
+[TS] nivel inicial: 0 (ambito global)
+[TS] insertar nivel 0: 'g' : int (variable global) linea 7 -> ok
+[TS] insertar nivel 0: 'muestra' : void (funcion) linea 9 -> ok (1 parametro/s)
+[TS] abrir nivel 1
+[TS] insertar nivel 1: 'g' : int (parametro) linea 9 -> ok
+[TS] insertar nivel 1: 'g2' : int (variable local) linea 10 -> ok
+[TS] buscar 'g2' -> nivel 1 (variable local)
+[TS] buscar 'g' -> nivel 1 (parametro)
+[TS] buscar 'g' -> nivel 1 (parametro)
+[TS] buscar 'g2' -> nivel 1 (variable local)
+[TS] abrir nivel 2
+[TS] insertar nivel 2: 'g' : int (variable local) linea 14 -> ok
+[TS] buscar 'g' -> nivel 2 (variable local)
+[TS] cerrar nivel 2 (1 entrada/s)
+[TS] buscar 'g2' -> nivel 1 (variable local)
+[TS] abrir nivel 2
+[TS] insertar nivel 2: 'h' : int (variable local) linea 18 -> ok
+[TS] buscar 'h' -> nivel 2 (variable local)
+[TS] buscar 'g2' -> nivel 1 (variable local)
+[TS] buscar 'g2' -> nivel 1 (variable local)
+[TS] buscar 'g2' -> nivel 1 (variable local)
+[TS] cerrar nivel 2 (1 entrada/s)
+[TS] cerrar nivel 1 (2 entrada/s)
+[TS] insertar nivel 0: 'main' : void (funcion) linea 25 -> ok (0 parametro/s)
+[TS] abrir nivel 1
+[TS] insertar nivel 1: 'local' : int (variable local) linea 26 -> ok
+[TS] buscar 'local' -> nivel 1 (variable local)
+[TS] buscar 'muestra' -> nivel 0 (funcion)
+[TS] buscar 'local' -> nivel 1 (variable local)
+[TS] buscar 'g' -> nivel 0 (variable global)
+[TS] buscar 'local' -> nivel 1 (variable local)
+[TS] cerrar nivel 1 (1 entrada/s)
+=== Arbol de Sintaxis Abstracta (anotado con tipos) ===
+PROGRAMA  [linea 1]
+  DECLARACION tipo=int nombre=g  [linea 7]
+  METODO tipo=void nombre=muestra  [linea 9]
+    DECLARACION tipo=int nombre=g  [linea 9]
+    BLOQUE  [linea 9]
+      DECLARACION tipo=int nombre=g2  [linea 10]
+      ASIGNACION tipo=int nombre=g2  [linea 11]
+        ID tipo=int nombre=g  [linea 11]
+      ASIGNACION tipo=int nombre=g  [linea 12]
+        NRO tipo=int valor="1"  [linea 12]
+      IF  [linea 13]
+        OP_BINARIA tipo=boolean valor=">"  [linea 13]
+          ID tipo=int nombre=g2  [linea 13]
+          NRO tipo=int valor="0"  [linea 13]
+        BLOQUE  [linea 13]
+          DECLARACION tipo=int nombre=g  [linea 14]
+          ASIGNACION tipo=int nombre=g  [linea 15]
+            NRO tipo=int valor="2"  [linea 15]
+      WHILE  [linea 17]
+        OP_BINARIA tipo=boolean valor=">"  [linea 17]
+          ID tipo=int nombre=g2  [linea 17]
+          NRO tipo=int valor="0"  [linea 17]
+        BLOQUE  [linea 17]
+          DECLARACION tipo=int nombre=h  [linea 18]
+          ASIGNACION tipo=int nombre=h  [linea 19]
+            ID tipo=int nombre=g2  [linea 19]
+          ASIGNACION tipo=int nombre=g2  [linea 20]
+            OP_BINARIA tipo=int valor="-"  [linea 20]
+              ID tipo=int nombre=g2  [linea 20]
+              NRO tipo=int valor="1"  [linea 20]
+      RETORNO  [linea 22]
+  METODO tipo=void nombre=main  [linea 25]
+    BLOQUE  [linea 25]
+      DECLARACION tipo=int nombre=local  [linea 26]
+      ASIGNACION tipo=int nombre=local  [linea 27]
+        NRO tipo=int valor="1"  [linea 27]
+      LLAMADA tipo=void nombre=muestra  [linea 28]
+        ID tipo=int nombre=local  [linea 28]
+      ASIGNACION tipo=int nombre=g  [linea 29]
+        ID tipo=int nombre=local  [linea 29]
+      RETORNO  [linea 30]
+
+=== Tabla de Simbolos ===
+Nota: al terminar el analisis solo persiste el ambito global, los niveles locales se destruyen al cerrarse.
+Nivel 0 (global):
+  'main' : void  (funcion)  linea 25, sin parametros
+  'muestra' : void  (funcion)  linea 9, 1 parametro: [int]
+  'g' : int  (variable global)  linea 7
+### STDERR
+### SEM
+=== Arbol de Sintaxis Abstracta (anotado con tipos) ===
+PROGRAMA  [linea 1]
+  DECLARACION tipo=int nombre=g  [linea 7]
+  METODO tipo=void nombre=muestra  [linea 9]
+    DECLARACION tipo=int nombre=g  [linea 9]
+    BLOQUE  [linea 9]
+      DECLARACION tipo=int nombre=g2  [linea 10]
+      ASIGNACION tipo=int nombre=g2  [linea 11]
+        ID tipo=int nombre=g  [linea 11]
+      ASIGNACION tipo=int nombre=g  [linea 12]
+        NRO tipo=int valor="1"  [linea 12]
+      IF  [linea 13]
+        OP_BINARIA tipo=boolean valor=">"  [linea 13]
+          ID tipo=int nombre=g2  [linea 13]
+          NRO tipo=int valor="0"  [linea 13]
+        BLOQUE  [linea 13]
+          DECLARACION tipo=int nombre=g  [linea 14]
+          ASIGNACION tipo=int nombre=g  [linea 15]
+            NRO tipo=int valor="2"  [linea 15]
+      WHILE  [linea 17]
+        OP_BINARIA tipo=boolean valor=">"  [linea 17]
+          ID tipo=int nombre=g2  [linea 17]
+          NRO tipo=int valor="0"  [linea 17]
+        BLOQUE  [linea 17]
+          DECLARACION tipo=int nombre=h  [linea 18]
+          ASIGNACION tipo=int nombre=h  [linea 19]
+            ID tipo=int nombre=g2  [linea 19]
+          ASIGNACION tipo=int nombre=g2  [linea 20]
+            OP_BINARIA tipo=int valor="-"  [linea 20]
+              ID tipo=int nombre=g2  [linea 20]
+              NRO tipo=int valor="1"  [linea 20]
+      RETORNO  [linea 22]
+  METODO tipo=void nombre=main  [linea 25]
+    BLOQUE  [linea 25]
+      DECLARACION tipo=int nombre=local  [linea 26]
+      ASIGNACION tipo=int nombre=local  [linea 27]
+        NRO tipo=int valor="1"  [linea 27]
+      LLAMADA tipo=void nombre=muestra  [linea 28]
+        ID tipo=int nombre=local  [linea 28]
+      ASIGNACION tipo=int nombre=g  [linea 29]
+        ID tipo=int nombre=local  [linea 29]
+      RETORNO  [linea 30]
+
+=== Tabla de Simbolos ===
+Nota: al terminar el analisis solo persiste el ambito global, los niveles locales se destruyen al cerrarse.
+Nivel 0 (global):
+  'main' : void  (funcion)  linea 25, sin parametros
+  'muestra' : void  (funcion)  linea 9, 1 parametro: [int]
+  'g' : int  (variable global)  linea 7

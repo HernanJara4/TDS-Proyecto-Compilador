@@ -89,32 +89,36 @@ static const char *nombre_tipo_nodo(TipoNodo tipo) {
     }
 }
 
-static void indentar(int nivel) {
+static void indentar(FILE *archivo, int nivel) {
     for (int i = 0; i < nivel * 2; i++)
-        putchar(' ');
+        fputc(' ', archivo);
 }
 
-void imprimir_ast(ASTNode *nodo, int nivel) {
+void imprimir_ast_en(FILE *archivo, ASTNode *nodo, int nivel) {
     while (nodo != NULL) {
-        indentar(nivel);
-        printf("%s", nombre_tipo_nodo(nodo->tipo));
+        indentar(archivo, nivel);
+        fprintf(archivo, "%s", nombre_tipo_nodo(nodo->tipo));
 
         if (nodo->simbolo != NULL) {
             if (nodo->simbolo->tipo_dato != NULL)
-                printf(" tipo=%s", nodo->simbolo->tipo_dato);
+                fprintf(archivo, " tipo=%s", nodo->simbolo->tipo_dato);
             if (nodo->simbolo->nombre_id != NULL)
-                printf(" nombre=%s", nodo->simbolo->nombre_id);
+                fprintf(archivo, " nombre=%s", nodo->simbolo->nombre_id);
             if (nodo->simbolo->valor != NULL)
-                printf(" valor=\"%s\"", nodo->simbolo->valor);
+                fprintf(archivo, " valor=\"%s\"", nodo->simbolo->valor);
         }
-        printf("  [linea %d]\n", nodo->linea);
+        fprintf(archivo, "  [linea %d]\n", nodo->linea);
 
-        imprimir_ast(nodo->hijo1, nivel + 1);
-        imprimir_ast(nodo->hijo2, nivel + 1);
-        imprimir_ast(nodo->hijo3, nivel + 1);
+        imprimir_ast_en(archivo, nodo->hijo1, nivel + 1);
+        imprimir_ast_en(archivo, nodo->hijo2, nivel + 1);
+        imprimir_ast_en(archivo, nodo->hijo3, nivel + 1);
 
         nodo = nodo->siguiente;   /* sigue al hermano, mismo nivel */
     }
+}
+
+void imprimir_ast(ASTNode *nodo, int nivel) {
+    imprimir_ast_en(stdout, nodo, nivel);
 }
 
 /* ---------------------------------------------------------------------

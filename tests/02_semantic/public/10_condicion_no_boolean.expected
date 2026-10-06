@@ -1,0 +1,7 @@
+### EXIT: 1
+### STDOUT
+### STDERR
+Error semantico en linea 5: la condicion del if debe ser boolean, pero es de tipo 'int' (regla 9)
+Error semantico en linea 10: la condicion del while debe ser boolean, pero es de tipo 'int' (regla 9)
+
+Se encontraron 2 error/es semanticos.

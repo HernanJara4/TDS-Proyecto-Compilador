@@ -1,0 +1,8 @@
+### EXIT: 1
+### STDOUT
+### STDERR
+Error semantico en linea 5: el identificador 'a' ya esta declarado en este ambito (declarado previamente en linea 4) (regla 1)
+Error semantico en linea 7: el identificador 'p' ya esta declarado en este ambito (declarado previamente en linea 7) (regla 1)
+Error semantico en linea 13: el identificador 'b' ya esta declarado en este ambito (declarado previamente en linea 12) (regla 1)
+
+Se encontraron 3 error/es semanticos.

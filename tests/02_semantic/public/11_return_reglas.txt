@@ -1,0 +1,27 @@
+// Etapa 2 - reglas 6 y 7 (y el requisito de retorno de la spec):
+//   - maltipo:      regla 7, el return trae boolean y el metodo retorna int
+//   - sinexpresion: regla 6, metodo con retorno y return sin expresion
+//   - conexpresion: regla 6, metodo void y return con expresion
+//   - sinretorno:   la spec prohíbe que un metodo con retorno alcance el
+//                   fin del metodo sin ejecutar un return
+// main es el control valido: void con return sin expresion.
+int maltipo() {
+    return true;
+}
+
+int sinexpresion() {
+    return;
+}
+
+void conexpresion() {
+    return 1;
+}
+
+int sinretorno() {
+    int a;
+    a = 1;
+}
+
+void main() {
+    return;
+}

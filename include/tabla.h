@@ -93,4 +93,19 @@ EntradaTS *ts_buscar(const char *nombre);
  * hacer con la EntradaTS ya creada). */
 int ts_insertar(EntradaTS *entrada);
 
-#endif 
+/* ---------------------------------------------------------------------
+ * Utilidades de consulta / volcado (las usa el motor semantico)
+ * --------------------------------------------------------------------- */
+
+/* Nombre legible de la categoria, para mensajes y volcados. */
+const char *ts_nombre_categoria(CategoriaSimbolo categoria);
+
+/* Cantidad de entradas en el nivel "nivel" (para la traza -debug). */
+int ts_contar_entradas(int nivel);
+
+/* Vuelca en "f" todos los niveles que tengan entradas. Tras terminar el
+ * analisis semantico solo queda el nivel 0 (los niveles locales ya
+ * fueron destruidos por ts_cerrar_nivel). */
+void ts_imprimir(FILE *f);
+
+#endif

@@ -1,0 +1,8 @@
+### EXIT: 1
+### STDOUT
+### STDERR
+Error semantico en linea 19: la invocacion a la funcion void 'nada' no puede usarse como expresion (regla 5)
+Error semantico en linea 20: 'f' es una funcion y no puede usarse como valor (regla 8)
+Error semantico en linea 21: 'a' no es una funcion: no se puede invocar (regla 4)
+
+Se encontraron 3 error/es semanticos.

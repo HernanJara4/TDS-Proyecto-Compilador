@@ -1,0 +1,44 @@
+### EXIT: 0
+### STDOUT
+### STDERR
+### SEM
+=== Arbol de Sintaxis Abstracta (anotado con tipos) ===
+PROGRAMA  [linea 1]
+  DECLARACION tipo=int nombre=valor  [linea 5]
+  METODO tipo=int nombre=duplicar  [linea 7]
+    DECLARACION tipo=int nombre=n  [linea 7]
+    BLOQUE  [linea 7]
+      RETORNO  [linea 8]
+        OP_BINARIA tipo=int valor="+"  [linea 8]
+          ID tipo=int nombre=n  [linea 8]
+          ID tipo=int nombre=n  [linea 8]
+  METODO tipo=void nombre=main  [linea 11]
+    BLOQUE  [linea 11]
+      DECLARACION tipo=int nombre=duplicar  [linea 12]
+      DECLARACION tipo=int nombre=valor  [linea 13]
+      ASIGNACION tipo=int nombre=duplicar  [linea 14]
+        NRO tipo=int valor="1"  [linea 14]
+      ASIGNACION tipo=int nombre=valor  [linea 15]
+        NRO tipo=int valor="2"  [linea 15]
+      WHILE  [linea 16]
+        OP_BINARIA tipo=boolean valor=">"  [linea 16]
+          ID tipo=int nombre=valor  [linea 16]
+          NRO tipo=int valor="0"  [linea 16]
+        BLOQUE  [linea 16]
+          DECLARACION tipo=int nombre=local  [linea 17]
+          ASIGNACION tipo=int nombre=local  [linea 18]
+            OP_BINARIA tipo=int valor="+"  [linea 18]
+              ID tipo=int nombre=valor  [linea 18]
+              ID tipo=int nombre=duplicar  [linea 18]
+          ASIGNACION tipo=int nombre=valor  [linea 19]
+            OP_BINARIA tipo=int valor="-"  [linea 19]
+              ID tipo=int nombre=valor  [linea 19]
+              NRO tipo=int valor="1"  [linea 19]
+      RETORNO  [linea 21]
+
+=== Tabla de Simbolos ===
+Nota: al terminar el analisis solo persiste el ambito global, los niveles locales se destruyen al cerrarse.
+Nivel 0 (global):
+  'main' : void  (funcion)  linea 11, sin parametros
+  'duplicar' : int  (funcion)  linea 7, 1 parametro: [int]
+  'valor' : int  (variable global)  linea 5

@@ -1,0 +1,40 @@
+// Etapa 2 - AST: programa completo que usa todos los tipos de nodo
+// (declaraciones, metodos, parametros, bloques, asignaciones, if/else,
+// while, llamadas, operadores binarios y unarios, literales e IDs).
+// Esperado: sin errores, el .sem muestra el arbol con todos los tipos resueltos.
+int total;
+float promedio;
+boolean activo;
+
+int suma(int a, int b) {
+    return a + b;
+}
+
+void imprimir(int v) {
+    if (v > 0) {
+        total = total + v;
+    } else {
+        total = 0;
+    }
+    return;
+}
+
+void main() {
+    int contador;
+    float saldo;
+    contador = 0;
+    saldo = 1.5;
+    while activo {
+        contador = contador + 1;
+        saldo = saldo + suma(contador, 2);
+        imprimir(contador);
+        if (contador == 3) {
+            activo = false;
+        } else {
+            activo = true;
+        }
+    }
+    promedio = saldo / 2;
+    total = -contador;
+    return;
+}

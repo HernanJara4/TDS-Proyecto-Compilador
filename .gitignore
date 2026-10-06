@@ -1,2 +1,11 @@
 bin/*
 src/build/*
+
+# Salidas que genera el compilador por cada etapa (Docs/00-TDS-proyecto.pdf)
+*.lex
+*.sint
+*.sem
+*.ci
+*.ass
+*.opt
+*.out

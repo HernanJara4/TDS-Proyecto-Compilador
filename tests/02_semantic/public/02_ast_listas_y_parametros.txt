@@ -1,0 +1,24 @@
+// Etapa 2 - AST: listas encadenadas con el puntero "siguiente"
+// (first-child / next-sibling): varias variables en una declaracion,
+// varios parametros, y cadenas de declaraciones/sentencias.
+// Esperado: sin errores.
+int w, x, y, z;
+
+int suma3(int p, int q, int r) {
+    int tmp;
+    tmp = p;
+    tmp = tmp + q;
+    tmp = tmp + r;
+    return tmp;
+}
+
+void main() {
+    int m, n;
+    m = 1;
+    n = 2;
+    w = suma3(m, n, 3);
+    x = 4;
+    y = 5;
+    z = 6;
+    return;
+}

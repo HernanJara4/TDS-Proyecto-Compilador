@@ -1,0 +1,9 @@
+### EXIT: 1
+### STDOUT
+### STDERR
+Error semantico en linea 5: el identificador 'x' no esta declarado (regla 2)
+Error semantico en linea 6: el identificador 'y' no esta declarado (regla 2)
+Error semantico en linea 6: el metodo 'doble' no esta declarado en este punto (hay una declaracion en la linea 10) (regla 2)
+Error semantico en linea 6: el identificador 'x' no esta declarado (regla 2)
+
+Se encontraron 4 error/es semanticos.

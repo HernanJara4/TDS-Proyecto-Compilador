@@ -1,0 +1,22 @@
+// Etapa 2 - alcance: una variable local puede ocultar tanto una
+// variable global como una funcion, y lo contrario (usar un ambito
+// superor desde uno interno) tambien es legal.
+// Esperado: sin errores.
+int valor;
+
+int duplicar(int n) {
+    return n + n;
+}
+
+void main() {
+    int duplicar;
+    int valor;
+    duplicar = 1;
+    valor = 2;
+    while valor > 0 {
+        int local;
+        local = valor + duplicar;
+        valor = valor - 1;
+    }
+    return;
+}

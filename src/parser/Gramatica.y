@@ -15,6 +15,8 @@
     extern FILE *yyin;
     void yyerror(const char *s);
 
+    #include "semantica.h"
+
     int errores_lexicos = 0;
     int errores_sintacticos = 0;
 }
@@ -248,27 +250,204 @@ void yyerror(const char *s) {
     errores_sintacticos++;
 }
 
+/* ---------------------------------------------------------------------
+ * Linea de comandos (Docs/00-TDS-proyecto.pdf, Table 1)
+ *
+ *   c-tds [opcion] nombreArchivo.ctds
+ *
+ * -o <salida>     renombra el archivo de salida
+ * -target <etapa> compila hasta la etapa indicada
+ * -debug          imprime informacion de debugging (la traza de la TS
+ *                 y el volcado del resultado); sin esta opcion, una
+ *                 compilacion exitosa no imprime nada por consola
+ *
+ * Etapas todavia no implementadas (codinter, assembly) se rechazan con
+ * un mensaje claro en lugar de fallar en silencio.
+ * --------------------------------------------------------------------- */
+
+typedef enum {
+    ETAPA_SCAN,
+    ETAPA_PARSE,
+    ETAPA_SEMANTICA
+} EtapaCompilacion;
+
+static void imprimir_uso(const char *programa) {
+    fprintf(stderr, "Uso: %s [opcion] nombreArchivo.ctds\n", programa);
+    fprintf(stderr, "  -o <salida>      Renombra el archivo de salida\n");
+    fprintf(stderr, "  -target <etapa>  scan | parse | codinter | assembly\n");
+    fprintf(stderr, "  -debug           Imprime informacion de debugging\n");
+}
+
+/* Ruta del archivo de salida: si se paso -o se usa ese nombre tal cual,
+ * si no se reemplaza la extension del fuente por "ext" (.lex, .sint,
+ * .sem). El puntero devuelto hay que liberarlo con free(). */
+static char *ruta_salida(const char *archivo, const char *salida, const char *ext) {
+    if (salida != NULL) {
+        char *ruta = (char *)malloc(strlen(salida) + 1);
+        if (ruta == NULL) {
+            fprintf(stderr, "Error interno: sin memoria para la ruta de salida\n");
+            exit(1);
+        }
+        strcpy(ruta, salida);
+        return ruta;
+    }
+
+    char *ruta = (char *)malloc(strlen(archivo) + strlen(ext) + 4);
+    if (ruta == NULL) {
+        fprintf(stderr, "Error interno: sin memoria para la ruta de salida\n");
+        exit(1);
+    }
+    strcpy(ruta, archivo);
+
+    char *punto = strrchr(ruta, '.');
+    char *slash = strrchr(ruta, '/');
+    if (punto != NULL && (slash == NULL || punto > slash))
+        *punto = '\0';          /* corta la extension vieja */
+    strcat(ruta, ext);
+
+    return ruta;
+}
+
+/* Nombre legible de cada token, para el volcado de -target scan (.lex). */
+static const char *nombre_token(int token) {
+    switch (token) {
+        case TIPO_INT:      return "TIPO_INT";
+        case TIPO_BOOLEAN:  return "TIPO_BOOLEAN";
+        case TIPO_FLOAT:    return "TIPO_FLOAT";
+        case TIPO_VOID:     return "TIPO_VOID";
+        case IF:            return "IF";
+        case ELSE:          return "ELSE";
+        case WHILE:         return "WHILE";
+        case RETURN:        return "RETURN";
+        case CONST_TRUE:    return "CONST_TRUE";
+        case CONST_FALSE:   return "CONST_FALSE";
+        case ID:            return "ID";
+        case NRO:           return "NRO";
+        case FLOTANTE:      return "FLOTANTE";
+        case OP_SUMA:       return "OP_SUMA";
+        case OP_RESTA:      return "OP_RESTA";
+        case OP_MULT:       return "OP_MULT";
+        case OP_DIV:        return "OP_DIV";
+        case OP_MOD:        return "OP_MOD";
+        case OP_MENOR:      return "OP_MENOR";
+        case OP_MAYOR:      return "OP_MAYOR";
+        case OP_IGUAL:      return "OP_IGUAL";
+        case OP_AND:        return "OP_AND";
+        case OP_OR:         return "OP_OR";
+        case OP_NOT:        return "OP_NOT";
+        case ASIGNACION:    return "ASIGNACION";
+        case COMA:          return "COMA";
+        case PUNTO_Y_COMA:  return "PUNTO_Y_COMA";
+        case PAR_IZQ:       return "PAR_IZQ";
+        case PAR_DER:       return "PAR_DER";
+        case LLAVE_IZQ:     return "LLAVE_IZQ";
+        case LLAVE_DER:     return "LLAVE_DER";
+        default:            return "??";
+    }
+}
+
 int main(int argc, char **argv) {
     const char *archivo = NULL;
+    const char *salida = NULL;
     int debug = 0;
+    EtapaCompilacion etapa = ETAPA_SEMANTICA;   /* etapa corriente */
 
     for (int i = 1; i < argc; i++) {
-        if (strcmp(argv[i], "-debug") == 0)
+        const char *arg = argv[i];
+
+        if (strcmp(arg, "-debug") == 0) {
             debug = 1;
-        else
-            archivo = argv[i];
+        } else if (strcmp(arg, "-o") == 0) {
+            if (i + 1 >= argc) {
+                fprintf(stderr, "La opcion -o necesita un argumento.\n");
+                imprimir_uso(argv[0]);
+                return 1;
+            }
+            salida = argv[++i];
+        } else if (strcmp(arg, "-target") == 0) {
+            if (i + 1 >= argc) {
+                fprintf(stderr, "La opcion -target necesita un argumento.\n");
+                imprimir_uso(argv[0]);
+                return 1;
+            }
+            const char *objetivo = argv[++i];
+
+            if (strcmp(objetivo, "scan") == 0)
+                etapa = ETAPA_SCAN;
+            else if (strcmp(objetivo, "parse") == 0)
+                etapa = ETAPA_PARSE;
+            else if (strcmp(objetivo, "semantic") == 0)
+                etapa = ETAPA_SEMANTICA;   /* extension de la tabla de la spec */
+            else if (strcmp(objetivo, "codinter") == 0 ||
+                     strcmp(objetivo, "assembly") == 0) {
+                fprintf(stderr, "La etapa '%s' todavia no esta implementada.\n", objetivo);
+                return 1;
+            } else {
+                fprintf(stderr, "Etapa desconocida '%s'. Etapas validas: "
+                                "scan, parse, codinter, assembly.\n", objetivo);
+                return 1;
+            }
+        } else if (strncmp(arg, "-", 1) == 0) {
+            /* el nombre del archivo no puede empezar con '-' */
+            fprintf(stderr, "Opcion desconocida '%s'.\n", arg);
+            imprimir_uso(argv[0]);
+            return 1;
+        } else if (archivo != NULL) {
+            fprintf(stderr, "Solo se admite un archivo fuente.\n");
+            return 1;
+        } else {
+            archivo = arg;
+        }
     }
 
-    if (archivo != NULL) {
-        FILE *file = fopen(archivo, "r");
-        if (!file) {
-            fprintf(stderr, "No se pudo abrir el archivo '%s'.\n", archivo);
+    if (archivo == NULL) {
+        fprintf(stderr, "Falta el archivo fuente (.ctds).\n");
+        imprimir_uso(argv[0]);
+        return 1;
+    }
+
+    FILE *file = fopen(archivo, "r");
+    if (!file) {
+        fprintf(stderr, "No se pudo abrir el archivo '%s'.\n", archivo);
+        return 1;
+    }
+    yyin = file;
+
+    /* ---------- Hasta la etapa scan ---------- */
+    if (etapa == ETAPA_SCAN) {
+        char *ruta = ruta_salida(archivo, salida, ".lex");
+        FILE *out = fopen(ruta, "w");
+        if (out == NULL) {
+            fprintf(stderr, "No se pudo escribir el archivo '%s'.\n", ruta);
+            free(ruta);
+            fclose(file);
             return 1;
         }
-        yyin = file;
+
+        int token;
+        int cantidad = 0;
+        while ((token = yylex()) != 0) {
+            fprintf(out, "%d\t%s\t%s\n", yylineno, nombre_token(token), yytext);
+            cantidad++;
+        }
+        fclose(out);
+        fclose(file);
+
+        if (errores_lexicos > 0) {
+            remove(ruta);           /* la etapa no termino bien: sin salida */
+            fprintf(stderr, "\nSe encontraron %d error/es lexico/s.\n", errores_lexicos);
+            free(ruta);
+            return 1;
+        }
+        if (debug)
+            printf("Analisis lexico exitoso: %d token/s.\n", cantidad);
+        free(ruta);
+        return 0;
     }
 
+    /* ---------- Hasta la etapa parse (o mas alla) ---------- */
     yyparse();
+    fclose(file);
 
     if (errores_lexicos > 0 || errores_sintacticos > 0) {
         fprintf(stderr, "\nSe encontraron %d error/es lexico/s y %d error/es sintactico/s.\n",
@@ -276,13 +455,54 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    /* Sin errores lexicos ni sintacticos, el AST esta completo.
-     * Aca se enganchara analizar_semantica(raiz_ast) en la proxima tanda. */
-    if (debug) {
-        printf("Analisis lexico y sintactico exitoso. AST:\n\n");
-        imprimir_ast(raiz_ast, 0);
+    if (etapa == ETAPA_PARSE) {
+        if (debug) {
+            printf("Analisis lexico y sintactico exitoso. AST:\n\n");
+            imprimir_ast(raiz_ast, 0);
+        }
+
+        char *ruta = ruta_salida(archivo, salida, ".sint");
+        FILE *out = fopen(ruta, "w");
+        if (out == NULL) {
+            fprintf(stderr, "No se pudo escribir el archivo '%s'.\n", ruta);
+            free(ruta);
+            liberar_ast(raiz_ast);
+            return 1;
+        }
+        fprintf(out, "=== Arbol de Sintaxis Abstracta ===\n");
+        imprimir_ast_en(out, raiz_ast, 0);
+        fclose(out);
+
+        free(ruta);
+        liberar_ast(raiz_ast);
+        return 0;
     }
 
+    /* ---------- Etapa semantica (la corriente) ---------- */
+    sem_set_debug(debug);
+    int errores = analizar_semantica(raiz_ast);
+
+    if (debug)
+        volcar_resultado_semantico(stdout, raiz_ast);
+
+    if (errores > 0) {
+        fprintf(stderr, "\nSe encontraron %d error/es semanticos.\n", errores);
+        liberar_ast(raiz_ast);
+        return 1;
+    }
+
+    char *ruta = ruta_salida(archivo, salida, ".sem");
+    FILE *out = fopen(ruta, "w");
+    if (out == NULL) {
+        fprintf(stderr, "No se pudo escribir el archivo '%s'.\n", ruta);
+        free(ruta);
+        liberar_ast(raiz_ast);
+        return 1;
+    }
+    volcar_resultado_semantico(out, raiz_ast);
+    fclose(out);
+
+    free(ruta);
     liberar_ast(raiz_ast);
     return 0;
 }

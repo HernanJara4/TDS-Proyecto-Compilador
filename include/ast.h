@@ -58,6 +58,12 @@ ASTNode *agregar_a_lista(ASTNode *lista, ASTNode *nuevo);
 void asignar_tipo_lista(ASTNode *lista, char *tipo_dato);
 
 
+/* Vuelca el arbol (y sus hermanos) indentado en "archivo". Lo usa tanto
+ * -debug (stdout) como la generacion de los archivos de salida
+ * (.sint sin anotar, .sem con los tipos resueltos). */
+void imprimir_ast_en(FILE *archivo, ASTNode *nodo, int nivel);
+
+/* Atajo: imprimir_ast_en(stdout, ...). */
 void imprimir_ast(ASTNode *nodo, int nivel);
 void liberar_ast(ASTNode *nodo);
 

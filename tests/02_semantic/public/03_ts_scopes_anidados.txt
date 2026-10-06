@@ -1,0 +1,31 @@
+// Etapa 2 - Tabla de Simbolos: scopes anidados y shadowing.
+// Correr con -debug: la traza muestra abrir/cerrar de cada nivel y el
+// nivel donde resuelve cada busqueda (parametro que oculta global,
+// bloque que oculta parametro, etc.).
+// Esperado: sin errores (ocultar identificadores de un ambito superor
+// es legal).
+int g;
+
+void muestra(int g) {
+    int g2;
+    g2 = g;
+    g = 1;
+    if (g2 > 0) {
+        int g;
+        g = 2;
+    }
+    while g2 > 0 {
+        int h;
+        h = g2;
+        g2 = g2 - 1;
+    }
+    return;
+}
+
+void main() {
+    int local;
+    local = 1;
+    muestra(local);
+    g = local;
+    return;
+}

@@ -1,0 +1,8 @@
+// Etapa 2 - Tabla de Simbolos: regla 3 - todo programa define al
+// metodo main (este caso no lo tiene).
+int x;
+
+int f() {
+    x = 1;
+    return x;
+}

@@ -1,0 +1,16 @@
+// Etapa 2 - Tabla de Simbolos: regla 1 - ningun identificador puede
+// declararse dos veces en el mismo bloque (variable global repetida,
+// parametros repetidos y variables locales repetidas).
+int a;
+int a;
+
+int duplicada(int p, int p) {
+    return p;
+}
+
+void main() {
+    int b;
+    int b;
+    duplicada(1, 2);
+    return;
+}

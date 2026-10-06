@@ -530,9 +530,19 @@ char *yytext;
 #include "Gramatica.tab.h"
 
 extern int errores_lexicos; /* Contador global de errores lexicos, definido en Gramatica.y */
-#line 534 "build/lex.yy.c"
+
+/* Con %locations en Gramatica.y, bison expone yylloc y el tipo YYLTYPE
+ * (ambos declarados en Gramatica.tab.h). YY_USER_ACTION se ejecuta antes
+ * de la accion de CADA regla reconocida, asi que con esto cada token
+ * queda con su propia linea en yylloc, y las acciones del parser pueden
+ * usar @1, @2, etc. para saber en que linea del fuente ocurrio cada
+ * construccion (se usa para que los nodos del AST guarden su "linea"). */
+#define YY_USER_ACTION \
+    yylloc.first_line = yylloc.last_line = yylineno;
+
+#line 544 "build/lex.yy.c"
 /* ---------- Definiciones Regulares --------- */
-#line 536 "build/lex.yy.c"
+#line 546 "build/lex.yy.c"
 
 #define INITIAL 0
 
@@ -749,10 +759,10 @@ YY_DECL
 		}
 
 	{
-#line 20 "src/scanner/Gramatica.l"
+#line 30 "src/scanner/Gramatica.l"
 
 
-#line 756 "build/lex.yy.c"
+#line 766 "build/lex.yy.c"
 
 	while ( /*CONSTCOND*/1 )		/* loops until end-of-file is reached */
 		{
@@ -821,184 +831,184 @@ do_action:	/* This label is used only to access EOF actions. */
 
 case 1:
 YY_RULE_SETUP
-#line 22 "src/scanner/Gramatica.l"
+#line 32 "src/scanner/Gramatica.l"
 { /* Ignorar comentarios de una linea */ }
 	YY_BREAK
 case 2:
 /* rule 2 can match eol */
 YY_RULE_SETUP
-#line 23 "src/scanner/Gramatica.l"
+#line 33 "src/scanner/Gramatica.l"
 { /* Ignorar comentarios multilinea */ }
 	YY_BREAK
 case 3:
 /* rule 3 can match eol */
 YY_RULE_SETUP
-#line 24 "src/scanner/Gramatica.l"
+#line 34 "src/scanner/Gramatica.l"
 { /* Ignorar espacios, tabulaciones y saltos de linea */ }
 	YY_BREAK
 /* ---------- Palabras reservadas ---------- */
 case 4:
 YY_RULE_SETUP
-#line 27 "src/scanner/Gramatica.l"
+#line 37 "src/scanner/Gramatica.l"
 { return TIPO_BOOLEAN; }
 	YY_BREAK
 case 5:
 YY_RULE_SETUP
-#line 28 "src/scanner/Gramatica.l"
+#line 38 "src/scanner/Gramatica.l"
 { return ELSE; }
 	YY_BREAK
 case 6:
 YY_RULE_SETUP
-#line 29 "src/scanner/Gramatica.l"
+#line 39 "src/scanner/Gramatica.l"
 { return CONST_FALSE; }
 	YY_BREAK
 case 7:
 YY_RULE_SETUP
-#line 30 "src/scanner/Gramatica.l"
+#line 40 "src/scanner/Gramatica.l"
 { return IF; }
 	YY_BREAK
 case 8:
 YY_RULE_SETUP
-#line 31 "src/scanner/Gramatica.l"
+#line 41 "src/scanner/Gramatica.l"
 { return TIPO_INT; }
 	YY_BREAK
 case 9:
 YY_RULE_SETUP
-#line 32 "src/scanner/Gramatica.l"
+#line 42 "src/scanner/Gramatica.l"
 { return RETURN; }
 	YY_BREAK
 case 10:
 YY_RULE_SETUP
-#line 33 "src/scanner/Gramatica.l"
+#line 43 "src/scanner/Gramatica.l"
 { return CONST_TRUE; }
 	YY_BREAK
 case 11:
 YY_RULE_SETUP
-#line 34 "src/scanner/Gramatica.l"
+#line 44 "src/scanner/Gramatica.l"
 { return TIPO_VOID; }
 	YY_BREAK
 case 12:
 YY_RULE_SETUP
-#line 35 "src/scanner/Gramatica.l"
+#line 45 "src/scanner/Gramatica.l"
 { return WHILE; }
 	YY_BREAK
 case 13:
 YY_RULE_SETUP
-#line 36 "src/scanner/Gramatica.l"
+#line 46 "src/scanner/Gramatica.l"
 { return TIPO_FLOAT; }
 	YY_BREAK
 /* ---------- Literales e identificadores ---------- */
 case 14:
 YY_RULE_SETUP
-#line 39 "src/scanner/Gramatica.l"
+#line 49 "src/scanner/Gramatica.l"
 { yylval.fval = atof(yytext); return FLOTANTE; }
 	YY_BREAK
 case 15:
 YY_RULE_SETUP
-#line 40 "src/scanner/Gramatica.l"
+#line 50 "src/scanner/Gramatica.l"
 { yylval.ival = atoi(yytext); return NRO; }
 	YY_BREAK
 case 16:
 YY_RULE_SETUP
-#line 41 "src/scanner/Gramatica.l"
+#line 51 "src/scanner/Gramatica.l"
 { yylval.sval = strdup(yytext); return ID; }
 	YY_BREAK
 /* ---------- Operadores ---------- */
 case 17:
 YY_RULE_SETUP
-#line 44 "src/scanner/Gramatica.l"
+#line 54 "src/scanner/Gramatica.l"
 { return OP_AND; }
 	YY_BREAK
 case 18:
 YY_RULE_SETUP
-#line 45 "src/scanner/Gramatica.l"
+#line 55 "src/scanner/Gramatica.l"
 { return OP_OR; }
 	YY_BREAK
 case 19:
 YY_RULE_SETUP
-#line 46 "src/scanner/Gramatica.l"
+#line 56 "src/scanner/Gramatica.l"
 { return OP_IGUAL; }
 	YY_BREAK
 case 20:
 YY_RULE_SETUP
-#line 47 "src/scanner/Gramatica.l"
+#line 57 "src/scanner/Gramatica.l"
 { return OP_MENOR; }
 	YY_BREAK
 case 21:
 YY_RULE_SETUP
-#line 48 "src/scanner/Gramatica.l"
+#line 58 "src/scanner/Gramatica.l"
 { return OP_MAYOR; }
 	YY_BREAK
 case 22:
 YY_RULE_SETUP
-#line 49 "src/scanner/Gramatica.l"
+#line 59 "src/scanner/Gramatica.l"
 { return OP_NOT; }
 	YY_BREAK
 case 23:
 YY_RULE_SETUP
-#line 50 "src/scanner/Gramatica.l"
+#line 60 "src/scanner/Gramatica.l"
 { return OP_SUMA; }
 	YY_BREAK
 case 24:
 YY_RULE_SETUP
-#line 51 "src/scanner/Gramatica.l"
+#line 61 "src/scanner/Gramatica.l"
 { return OP_RESTA; }
 	YY_BREAK
 case 25:
 YY_RULE_SETUP
-#line 52 "src/scanner/Gramatica.l"
+#line 62 "src/scanner/Gramatica.l"
 { return OP_MULT; }
 	YY_BREAK
 case 26:
 YY_RULE_SETUP
-#line 53 "src/scanner/Gramatica.l"
+#line 63 "src/scanner/Gramatica.l"
 { return OP_DIV; }
 	YY_BREAK
 case 27:
 YY_RULE_SETUP
-#line 54 "src/scanner/Gramatica.l"
+#line 64 "src/scanner/Gramatica.l"
 { return OP_MOD; }
 	YY_BREAK
 case 28:
 YY_RULE_SETUP
-#line 55 "src/scanner/Gramatica.l"
+#line 65 "src/scanner/Gramatica.l"
 { return ASIGNACION; }
 	YY_BREAK
 /* ---------- Delimitadores ---------- */
 case 29:
 YY_RULE_SETUP
-#line 58 "src/scanner/Gramatica.l"
+#line 68 "src/scanner/Gramatica.l"
 { return PUNTO_Y_COMA; }
 	YY_BREAK
 case 30:
 YY_RULE_SETUP
-#line 59 "src/scanner/Gramatica.l"
+#line 69 "src/scanner/Gramatica.l"
 { return COMA; }
 	YY_BREAK
 case 31:
 YY_RULE_SETUP
-#line 60 "src/scanner/Gramatica.l"
+#line 70 "src/scanner/Gramatica.l"
 { return PAR_IZQ; }
 	YY_BREAK
 case 32:
 YY_RULE_SETUP
-#line 61 "src/scanner/Gramatica.l"
+#line 71 "src/scanner/Gramatica.l"
 { return PAR_DER; }
 	YY_BREAK
 case 33:
 YY_RULE_SETUP
-#line 62 "src/scanner/Gramatica.l"
+#line 72 "src/scanner/Gramatica.l"
 { return LLAVE_IZQ; }
 	YY_BREAK
 case 34:
 YY_RULE_SETUP
-#line 63 "src/scanner/Gramatica.l"
+#line 73 "src/scanner/Gramatica.l"
 { return LLAVE_DER; }
 	YY_BREAK
 /* ---------- Cualquier otro caracter es un error lexico ---------- */
 case 35:
 YY_RULE_SETUP
-#line 66 "src/scanner/Gramatica.l"
+#line 76 "src/scanner/Gramatica.l"
 {
                 fprintf(stderr, "Error lexico en linea %d: caracter no reconocido '%s'\n", yylineno, yytext);
                 errores_lexicos++;
@@ -1006,10 +1016,10 @@ YY_RULE_SETUP
 	YY_BREAK
 case 36:
 YY_RULE_SETUP
-#line 71 "src/scanner/Gramatica.l"
+#line 81 "src/scanner/Gramatica.l"
 ECHO;
 	YY_BREAK
-#line 1013 "build/lex.yy.c"
+#line 1023 "build/lex.yy.c"
 case YY_STATE_EOF(INITIAL):
 	yyterminate();
 
@@ -2026,5 +2036,5 @@ void yyfree (void * ptr )
 
 #define YYTABLES_NAME "yytables"
 
-#line 71 "src/scanner/Gramatica.l"
+#line 81 "src/scanner/Gramatica.l"
 

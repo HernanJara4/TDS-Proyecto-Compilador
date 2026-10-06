@@ -100,3 +100,59 @@ int ts_insertar(EntradaTS *entrada) {
     TS[nivel_actual] = entrada;
     return 1;
 }
+
+/* ---------------------------------------------------------------------
+ * Utilidades de consulta / volcado
+ * --------------------------------------------------------------------- */
+
+const char *ts_nombre_categoria(CategoriaSimbolo categoria) {
+    switch (categoria) {
+        case CAT_VAR_GLOBAL: return "variable global";
+        case CAT_VAR_LOCAL:  return "variable local";
+        case CAT_PARAMETRO:  return "parametro";
+        case CAT_FUNCION:    return "funcion";
+    }
+    return "?";
+}
+
+int ts_contar_entradas(int nivel) {
+    if (nivel < 0 || nivel >= MAX_NIVELES)
+        return 0;
+
+    int n = 0;
+    for (EntradaTS *e = TS[nivel]; e != NULL; e = e->siguiente)
+        n++;
+    return n;
+}
+
+void ts_imprimir(FILE *f) {
+    for (int nivel = 0; nivel < MAX_NIVELES; nivel++) {
+        if (TS[nivel] == NULL)
+            continue;
+
+        fprintf(f, "Nivel %d%s:\n", nivel, nivel == 0 ? " (global)" : "");
+
+        for (EntradaTS *e = TS[nivel]; e != NULL; e = e->siguiente) {
+            const char *nombre = (e->simbolo && e->simbolo->nombre_id) ? e->simbolo->nombre_id : "?";
+            const char *tipo   = (e->simbolo && e->simbolo->tipo_dato) ? e->simbolo->tipo_dato : "?";
+
+            fprintf(f, "  '%s' : %s  (%s)  linea %d",
+                    nombre, tipo, ts_nombre_categoria(e->categoria), e->linea);
+
+            if (e->categoria == CAT_FUNCION) {
+                if (e->cantidad_parametros == 0) {
+                    fprintf(f, ", sin parametros");
+                } else {
+                    fprintf(f, ", %d parametro%s: [", e->cantidad_parametros,
+                            e->cantidad_parametros == 1 ? "" : "s");
+                    for (int i = 0; i < e->cantidad_parametros; i++) {
+                        const char *tp = e->tipos_parametros[i] ? e->tipos_parametros[i] : "?";
+                        fprintf(f, "%s%s", i > 0 ? ", " : "", tp);
+                    }
+                    fprintf(f, "]");
+                }
+            }
+            fputc('\n', f);
+        }
+    }
+}

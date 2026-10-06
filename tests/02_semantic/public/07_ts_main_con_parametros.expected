@@ -1,0 +1,6 @@
+### EXIT: 1
+### STDOUT
+### STDERR
+Error semantico en linea 3: el metodo main no debe tener parametros (regla 3)
+
+Se encontraron 1 error/es semanticos.

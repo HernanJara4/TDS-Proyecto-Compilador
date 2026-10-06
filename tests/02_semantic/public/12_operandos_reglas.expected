@@ -1,0 +1,12 @@
+### EXIT: 1
+### STDOUT
+### STDERR
+Error semantico en linea 11: los operandos de '%' deben ser int, pero son 'int' y 'float' (regla 10)
+Error semantico en linea 12: los operandos de '+' deben ser int o float, pero son 'boolean' y 'int' (regla 10)
+Error semantico en linea 13: los operandos de '<' deben ser int o float, pero son 'int' y 'boolean' (regla 10)
+Error semantico en linea 14: los operandos de '==' deben tener el mismo tipo, pero son 'int' y 'boolean' (regla 11)
+Error semantico en linea 16: los operandos de '&&' deben ser boolean, pero son 'int' y 'boolean' (regla 12)
+Error semantico en linea 17: el operando de '!' debe ser boolean, pero es 'int' (regla 12)
+Error semantico en linea 18: los operandos de '<' deben ser int o float, pero son 'int' y 'boolean' (regla 10)
+
+Se encontraron 7 error/es semanticos.

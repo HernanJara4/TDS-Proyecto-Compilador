@@ -1,0 +1,6 @@
+### EXIT: 1
+### STDOUT
+### STDERR
+Error semantico en linea 1: el programa no define el metodo main (regla 3)
+
+Se encontraron 1 error/es semanticos.

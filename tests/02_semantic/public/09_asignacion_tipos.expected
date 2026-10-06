@@ -1,0 +1,8 @@
+### EXIT: 1
+### STDOUT
+### STDERR
+Error semantico en linea 15: tipos incompatibles en la asignacion a 'entero': se esperaba 'int' y la expresion es de tipo 'boolean' (regla 13)
+Error semantico en linea 16: tipos incompatibles en la asignacion a 'flag': se esperaba 'boolean' y la expresion es de tipo 'int' (regla 13)
+Error semantico en linea 17: no se le puede asignar a 'fn': es una funcion (regla 8)
+
+Se encontraron 3 error/es semanticos.

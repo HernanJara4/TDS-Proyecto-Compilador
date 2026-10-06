@@ -1,0 +1,9 @@
+### EXIT: 1
+### STDOUT
+### STDERR
+Error semantico en linea 9: la expresion del return tiene tipo 'boolean' y el metodo retorna 'int' (regla 7)
+Error semantico en linea 13: el metodo retorna 'int': su sentencia return debe tener una expresion (regla 6)
+Error semantico en linea 17: el metodo es void: su sentencia return no puede tener una expresion (regla 6)
+Error semantico en linea 20: el metodo 'sinretorno' retorna 'int' pero puede alcanzar el fin del metodo sin ejecutar una sentencia return
+
+Se encontraron 4 error/es semanticos.

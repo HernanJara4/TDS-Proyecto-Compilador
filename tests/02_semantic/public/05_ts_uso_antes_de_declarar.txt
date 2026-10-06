@@ -1,0 +1,12 @@
+// Etapa 2 - Tabla de Simbolos: regla 2 - ningun identificador se usa
+// antes de ser declarado. 'y' y 'x' no existen; 'doble' si existe pero
+// esta declarada despues de main (el mensaje apunta a su linea).
+void main() {
+    x = 1;
+    y = doble(x);
+    return;
+}
+
+int doble(int n) {
+    return 2 * n;
+}

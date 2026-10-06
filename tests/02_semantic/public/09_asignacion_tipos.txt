@@ -1,0 +1,22 @@
+// Etapa 2 - reglas 13/14/8: asignaciones.
+//   - int = boolean y boolean = int son errores (regla 13)
+//   - asignarle a una funcion es un error (regla 8)
+//   - int <-> float es coercion y esta permitido (regla 14): no debe
+//     reportar error en esas lineas
+int entero;
+float real;
+boolean flag;
+
+void fn() {
+    return;
+}
+
+void main() {
+    entero = true;
+    flag = entero;
+    fn = 1;
+    real = entero;
+    entero = real;
+    flag = true;
+    return;
+}

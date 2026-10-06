@@ -1,0 +1,74 @@
+### EXIT: 0
+### STDOUT
+### STDERR
+### SEM
+=== Arbol de Sintaxis Abstracta (anotado con tipos) ===
+PROGRAMA  [linea 1]
+  DECLARACION tipo=int nombre=a  [linea 5]
+  DECLARACION tipo=int nombre=b  [linea 5]
+  DECLARACION tipo=int nombre=c  [linea 5]
+  DECLARACION tipo=int nombre=d  [linea 5]
+  DECLARACION tipo=boolean nombre=flag  [linea 6]
+  METODO tipo=void nombre=main  [linea 8]
+    BLOQUE  [linea 8]
+      ASIGNACION tipo=int nombre=a  [linea 9]
+        OP_BINARIA tipo=int valor="+"  [linea 9]
+          ID tipo=int nombre=b  [linea 9]
+          OP_BINARIA tipo=int valor="*"  [linea 9]
+            ID tipo=int nombre=c  [linea 9]
+            ID tipo=int nombre=d  [linea 9]
+      ASIGNACION tipo=int nombre=a  [linea 10]
+        OP_BINARIA tipo=int valor="*"  [linea 10]
+          OP_BINARIA tipo=int valor="+"  [linea 10]
+            ID tipo=int nombre=b  [linea 10]
+            ID tipo=int nombre=c  [linea 10]
+          ID tipo=int nombre=d  [linea 10]
+      ASIGNACION tipo=int nombre=a  [linea 11]
+        OP_BINARIA tipo=int valor="-"  [linea 11]
+          OP_BINARIA tipo=int valor="-"  [linea 11]
+            ID tipo=int nombre=b  [linea 11]
+            ID tipo=int nombre=c  [linea 11]
+          ID tipo=int nombre=d  [linea 11]
+      ASIGNACION tipo=int nombre=a  [linea 12]
+        OP_BINARIA tipo=int valor="-"  [linea 12]
+          ID tipo=int nombre=b  [linea 12]
+          OP_BINARIA tipo=int valor="-"  [linea 12]
+            ID tipo=int nombre=c  [linea 12]
+            ID tipo=int nombre=d  [linea 12]
+      ASIGNACION tipo=int nombre=a  [linea 13]
+        OP_BINARIA tipo=int valor="+"  [linea 13]
+          OP_BINARIA tipo=int valor="*"  [linea 13]
+            ID tipo=int nombre=b  [linea 13]
+            ID tipo=int nombre=c  [linea 13]
+          ID tipo=int nombre=d  [linea 13]
+      ASIGNACION tipo=boolean nombre=flag  [linea 14]
+        OP_BINARIA tipo=boolean valor="&&"  [linea 14]
+          OP_BINARIA tipo=boolean valor="=="  [linea 14]
+            ID tipo=int nombre=a  [linea 14]
+            ID tipo=int nombre=b  [linea 14]
+          OP_BINARIA tipo=boolean valor="<"  [linea 14]
+            ID tipo=int nombre=c  [linea 14]
+            ID tipo=int nombre=d  [linea 14]
+      ASIGNACION tipo=boolean nombre=flag  [linea 15]
+        OP_BINARIA tipo=boolean valor="||"  [linea 15]
+          OP_UNARIA tipo=boolean valor="!"  [linea 15]
+            ID tipo=boolean nombre=flag  [linea 15]
+          OP_BINARIA tipo=boolean valor=">"  [linea 15]
+            ID tipo=int nombre=a  [linea 15]
+            ID tipo=int nombre=b  [linea 15]
+      ASIGNACION tipo=int nombre=a  [linea 16]
+        OP_BINARIA tipo=int valor="+"  [linea 16]
+          OP_UNARIA tipo=int valor="-"  [linea 16]
+            ID tipo=int nombre=b  [linea 16]
+          ID tipo=int nombre=c  [linea 16]
+      RETORNO  [linea 17]
+
+=== Tabla de Simbolos ===
+Nota: al terminar el analisis solo persiste el ambito global, los niveles locales se destruyen al cerrarse.
+Nivel 0 (global):
+  'main' : void  (funcion)  linea 8, sin parametros
+  'flag' : boolean  (variable global)  linea 6
+  'd' : int  (variable global)  linea 5
+  'c' : int  (variable global)  linea 5
+  'b' : int  (variable global)  linea 5
+  'a' : int  (variable global)  linea 5
