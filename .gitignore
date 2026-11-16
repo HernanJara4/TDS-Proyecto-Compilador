@@ -1,4 +1,4 @@
-# Ignorar PDFs de teoria de la catedra
+# Ignorar PDFs de teoria de la catedra y carpeta de practica para la defensa
 Docs/Teoria/
 
 # Ignorar archivos intermedios generados en build/, pero conservar el ejecutable c-tds

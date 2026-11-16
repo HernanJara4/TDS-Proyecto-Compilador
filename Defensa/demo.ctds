@@ -1,0 +1,24 @@
+// Programa de demostracion para la Defensa Oral (demo.ctds)
+// Ejercita: variable global, funcion con parametros, llamada, if-else,
+// expresion constante optimizable (2 + 3) * 4 y retorno verificable.
+// Resultado esperado al ejecutar ./Defensa/demo.out: 25 (20 + 5).
+
+int bonus;
+
+int duplicar(int v) {
+    return v * 2;
+}
+
+int main() {
+    int base, total;
+    bonus = 5;
+    base = (2 + 3) * 2; // Sin -opt usa temporales; con -opt se pliega directo a 10
+
+    if (base > 5) {
+        total = duplicar(base) + bonus; // 20 + 5 = 25
+    } else {
+        total = 0;
+    }
+
+    return total;
+}
