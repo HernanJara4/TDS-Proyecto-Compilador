@@ -144,20 +144,7 @@ módulos de cada fase en subcarpetas dentro de `src/`:
      borra etiquetas huérfanas y elimina temporales no leídos (preservando
      siempre las instrucciones `IR_CALL` por sus posibles efectos laterales).
 
-
-3. CAMBIOS REALIZADOS EN ETAPAS ANTERIORES
---------------------------------------------------------------------------------
-- **Inclusión del guion bajo `_` en `Gramatica.l`:**
-  Al revisar la especificación de `<alpha_num>` para la Etapa 2, agregué `_` a
-  los caracteres permitidos luego de la primera letra de un identificador y
-  activé `%option nounput` y `%option noinput` para compilar sin warnings.
-- **Separación de `main()` en `src/main.c`:**
-  A partir de la Etapa 2 trasladé la función `main()` desde `Gramatica.y` hacia
-  `src/main.c` para centralizar la interfaz de línea de comandos (`-target`,
-  `-opt`, `-o`, `-debug`) y la generación de archivos por etapa.
-
-
-4. TESTING Y VERIFICACIÓN
+3. TESTING Y VERIFICACIÓN
 --------------------------------------------------------------------------------
 Organicé 5 suites de prueba automatizadas desde el `Makefile` (`make test`):
   - `make test-parser`   : 10 tests léxicos y sintácticos (`tests/01_scanner_parser/`).
