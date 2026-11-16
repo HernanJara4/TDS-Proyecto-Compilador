@@ -13,10 +13,8 @@ typedef enum {
     IR_LOCAL,       /*   local <tipo> <res>                 */
     IR_FUNC_END,    /* endfunc <res>                        */
 
-    /* Transferencia y conversiones de tipo (Regla 14) */
+    /* Transferencia / asignacion */
     IR_ASN,         /*   <res> = <arg1>                     */
-    IR_INT2FLOAT,   /*   <res> = int2float <arg1>           */
-    IR_FLOAT2INT,   /*   <res> = float2int <arg1>           */
 
     /* Operaciones aritmeticas binarias */
     IR_ADD,         /*   <res> = <arg1> + <arg2>            */
@@ -51,7 +49,7 @@ typedef struct InstruccionIR InstruccionIR;
 /* Representacion en memoria de una instruccion de Tres Direcciones (Cuadrupla) */
 struct InstruccionIR {
     OpIR           op;
-    char          *tipo;       /* Tipo del dato operado/resultado ("int", "float", "boolean", "void") */
+    char          *tipo;       /* Tipo del dato ("int", "boolean", "void") */
     char          *arg1;       /* Primer operando (variable, constante, temporal o funcion) */
     char          *arg2;       /* Segundo operando (o cantidad de argumentos en IR_CALL) */
     char          *res;        /* Destino (temporal, variable o etiqueta de salto) */

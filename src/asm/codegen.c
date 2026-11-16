@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdint.h>
 #include <ctype.h>
 #include "../../include/codegen.h"
 
@@ -11,7 +10,6 @@
  * Cada parametro, variable local y temporal recibe 8 bytes en -offset(%rbp). */
 typedef struct {
     char *nombre;
-    char *tipo;
     int   offset; /* positivo aqui; se emite como -offset(%rbp) */
 } SlotLocal;
 
@@ -29,10 +27,8 @@ static const char *REGS_ARGS[6] = {
  * --------------------------------------------------------------------- */
 
 static void limpiar_frame(void) {
-    for (int i = 0; i < cant_slots; i++) {
+    for (int i = 0; i < cant_slots; i++)
         free(tabla_frame[i].nombre);
-        free(tabla_frame[i].tipo);
-    }
     cant_slots = 0;
 }
 
@@ -46,7 +42,7 @@ static SlotLocal *buscar_slot(const char *nombre) {
     return NULL;
 }
 
-static int registrar_slot(const char *nombre, const char *tipo) {
+static int registrar_slot(const char *nombre) {
     if (nombre == NULL)
         return 0;
 
@@ -62,7 +58,6 @@ static int registrar_slot(const char *nombre, const char *tipo) {
 
     int offset = (cant_slots + 1) * 8;
     tabla_frame[cant_slots].nombre = strdup(nombre);
-    tabla_frame[cant_slots].tipo   = (tipo != NULL) ? strdup(tipo) : strdup("int");
     tabla_frame[cant_slots].offset = offset;
     cant_slots++;
     return offset;
@@ -81,16 +76,14 @@ static int construir_frame_funcion(InstruccionIR *inicio) {
         switch (i->op) {
             case IR_PARAM_DECL:
                 total_params_actual++;
-                registrar_slot(i->res, i->tipo);
+                registrar_slot(i->res);
                 break;
 
             case IR_LOCAL:
-                registrar_slot(i->res, i->tipo);
+                registrar_slot(i->res);
                 break;
 
             case IR_ASN:
-            case IR_INT2FLOAT:
-            case IR_FLOAT2INT:
             case IR_ADD:
             case IR_SUB:
             case IR_MUL:
@@ -104,7 +97,7 @@ static int construir_frame_funcion(InstruccionIR *inicio) {
             case IR_CALL:
                 /* Si el destino es un temporal (t0, t1, ...), reservarle slot */
                 if (i->res != NULL && i->res[0] == 't' && isdigit((unsigned char)i->res[1]))
-                    registrar_slot(i->res, i->tipo);
+                    registrar_slot(i->res);
                 break;
 
             default:
@@ -125,9 +118,7 @@ static int construir_frame_funcion(InstruccionIR *inicio) {
 static int es_literal_entero(const char *s) {
     if (s == NULL || *s == '\0')
         return 0;
-    int i = 0;
-    if (s[0] == '-')
-        i = 1;
+    int i = (s[0] == '-') ? 1 : 0;
     if (s[i] == '\0')
         return 0;
     for (; s[i] != '\0'; i++) {
@@ -137,43 +128,7 @@ static int es_literal_entero(const char *s) {
     return 1;
 }
 
-static int es_literal_flotante(const char *s) {
-    if (s == NULL || *s == '\0')
-        return 0;
-    int tiene_punto = 0;
-    int i = (s[0] == '-') ? 1 : 0;
-    if (s[i] == '\0')
-        return 0;
-    for (; s[i] != '\0'; i++) {
-        if (s[i] == '.') {
-            tiene_punto = 1;
-        } else if (!isdigit((unsigned char)s[i])) {
-            return 0;
-        }
-    }
-    return tiene_punto;
-}
-
-/* Determina si un operando corresponde a un valor de punto flotante (float) */
-static int operando_es_float(const char *op, InstruccionIR *lista_completa) {
-    if (op == NULL)
-        return 0;
-    if (es_literal_flotante(op))
-        return 1;
-
-    SlotLocal *slot = buscar_slot(op);
-    if (slot != NULL && slot->tipo != NULL)
-        return strcmp(slot->tipo, "float") == 0;
-
-    /* Buscar si es una variable global de tipo float */
-    for (InstruccionIR *i = lista_completa; i != NULL; i = i->siguiente) {
-        if (i->op == IR_GLOBAL && i->res != NULL && strcmp(i->res, op) == 0)
-            return (i->tipo != NULL && strcmp(i->tipo, "float") == 0);
-    }
-    return 0;
-}
-
-/* Carga cualquier operando (literal, variable local/temporal o global) en "reg" */
+/* Carga cualquier operando (literal entero/booleano, variable local/temporal o global) en "reg" */
 static void cargar_operando(const char *op, const char *reg, FILE *out) {
     if (op == NULL)
         return;
@@ -188,13 +143,6 @@ static void cargar_operando(const char *op, const char *reg, FILE *out) {
     }
     if (es_literal_entero(op)) {
         fprintf(out, "    movq $%s, %s\n", op, reg);
-        return;
-    }
-    if (es_literal_flotante(op)) {
-        float valor_f = (float)atof(op);
-        uint32_t bits = 0;
-        memcpy(&bits, &valor_f, sizeof(uint32_t));
-        fprintf(out, "    movq $0x%08x, %s\n", bits, reg);
         return;
     }
 
@@ -220,7 +168,7 @@ static void guardar_operando(const char *reg, const char *dest, FILE *out) {
 }
 
 /* ---------------------------------------------------------------------
- * Generador principal de Assembly x86-64
+ * Generador principal de Assembly x86-64 (Enteros y Booleanos)
  * --------------------------------------------------------------------- */
 
 void generar_asm(InstruccionIR *lista, FILE *out) {
@@ -229,7 +177,7 @@ void generar_asm(InstruccionIR *lista, FILE *out) {
 
     fprintf(out, "    /* Codigo Assembly x86-64 generado por C-TDS */\n");
 
-    /* 1. Seccion de datos para variables globales (.bss / .comm) */
+    /* 1. Seccion de datos para variables globales (.bss) */
     int hay_globales = 0;
     for (InstruccionIR *i = lista; i != NULL; i = i->siguiente) {
         if (i->op == IR_GLOBAL) {
@@ -309,55 +257,34 @@ void generar_asm(InstruccionIR *lista, FILE *out) {
                 guardar_operando("%rax", i->res, out);
                 break;
 
-            case IR_INT2FLOAT:
-                cargar_operando(i->arg1, "%rax", out);
-                fprintf(out, "    cvtsi2ssq %%rax, %%xmm0\n");
-                fprintf(out, "    movd %%xmm0, %%eax\n");
-                guardar_operando("%rax", i->res, out);
-                break;
-
-            case IR_FLOAT2INT:
-                cargar_operando(i->arg1, "%rax", out);
-                fprintf(out, "    movd %%eax, %%xmm0\n");
-                fprintf(out, "    cvttss2siq %%xmm0, %%rax\n");
-                guardar_operando("%rax", i->res, out);
-                break;
-
             case IR_ADD:
-            case IR_SUB:
-            case IR_MUL:
-            case IR_DIV: {
-                if ( i->tipo != NULL && strcmp(i->tipo, "float") == 0 ) {
-                    cargar_operando(i->arg1, "%rax", out);
-                    fprintf(out, "    movd %%eax, %%xmm0\n");
-                    cargar_operando(i->arg2, "%rcx", out);
-                    fprintf(out, "    movd %%ecx, %%xmm1\n");
-
-                    if      (i->op == IR_ADD) fprintf(out, "    addss %%xmm1, %%xmm0\n");
-                    else if (i->op == IR_SUB) fprintf(out, "    subss %%xmm1, %%xmm0\n");
-                    else if (i->op == IR_MUL) fprintf(out, "    mulss %%xmm1, %%xmm0\n");
-                    else if (i->op == IR_DIV) fprintf(out, "    divss %%xmm1, %%xmm0\n");
-
-                    fprintf(out, "    movd %%xmm0, %%eax\n");
-                    guardar_operando("%rax", i->res, out);
-                } else {
-                    cargar_operando(i->arg1, "%rax", out);
-                    cargar_operando(i->arg2, "%rcx", out);
-
-                    if (i->op == IR_ADD) {
-                        fprintf(out, "    addq %%rcx, %%rax\n");
-                    } else if (i->op == IR_SUB) {
-                        fprintf(out, "    subq %%rcx, %%rax\n");
-                    } else if (i->op == IR_MUL) {
-                        fprintf(out, "    imulq %%rcx, %%rax\n");
-                    } else if (i->op == IR_DIV) {
-                        fprintf(out, "    cqto\n");
-                        fprintf(out, "    idivq %%rcx\n");
-                    }
-                    guardar_operando("%rax", i->res, out);
-                }
+                cargar_operando(i->arg1, "%rax", out);
+                cargar_operando(i->arg2, "%rcx", out);
+                fprintf(out, "    addq %%rcx, %%rax\n");
+                guardar_operando("%rax", i->res, out);
                 break;
-            }
+
+            case IR_SUB:
+                cargar_operando(i->arg1, "%rax", out);
+                cargar_operando(i->arg2, "%rcx", out);
+                fprintf(out, "    subq %%rcx, %%rax\n");
+                guardar_operando("%rax", i->res, out);
+                break;
+
+            case IR_MUL:
+                cargar_operando(i->arg1, "%rax", out);
+                cargar_operando(i->arg2, "%rcx", out);
+                fprintf(out, "    imulq %%rcx, %%rax\n");
+                guardar_operando("%rax", i->res, out);
+                break;
+
+            case IR_DIV:
+                cargar_operando(i->arg1, "%rax", out);
+                cargar_operando(i->arg2, "%rcx", out);
+                fprintf(out, "    cqto\n");
+                fprintf(out, "    idivq %%rcx\n");
+                guardar_operando("%rax", i->res, out);
+                break;
 
             case IR_MOD:
                 cargar_operando(i->arg1, "%rax", out);
@@ -370,11 +297,7 @@ void generar_asm(InstruccionIR *lista, FILE *out) {
 
             case IR_NEG:
                 cargar_operando(i->arg1, "%rax", out);
-                if (i->tipo != NULL && strcmp(i->tipo, "float") == 0) {
-                    fprintf(out, "    btc $31, %%eax\n"); /* Invierte el bit de signo IEEE-754 */
-                } else {
-                    fprintf(out, "    negq %%rax\n");
-                }
+                fprintf(out, "    negq %%rax\n");
                 guardar_operando("%rax", i->res, out);
                 break;
 
@@ -388,29 +311,16 @@ void generar_asm(InstruccionIR *lista, FILE *out) {
 
             case IR_LT:
             case IR_GT:
-            case IR_EQ: {
-                if (operando_es_float(i->arg1, lista) || operando_es_float(i->arg2, lista)) {
-                    cargar_operando(i->arg1, "%rax", out);
-                    fprintf(out, "    movd %%eax, %%xmm0\n");
-                    cargar_operando(i->arg2, "%rcx", out);
-                    fprintf(out, "    movd %%ecx, %%xmm1\n");
-                    fprintf(out, "    ucomiss %%xmm1, %%xmm0\n");
-                    fprintf(out, "    movq $0, %%rax\n");
-                    if      (i->op == IR_LT) fprintf(out, "    setb %%al\n");
-                    else if (i->op == IR_GT) fprintf(out, "    seta %%al\n");
-                    else if (i->op == IR_EQ) fprintf(out, "    sete %%al\n");
-                } else {
-                    cargar_operando(i->arg1, "%rax", out);
-                    cargar_operando(i->arg2, "%rcx", out);
-                    fprintf(out, "    cmpq %%rcx, %%rax\n");
-                    fprintf(out, "    movq $0, %%rax\n");
-                    if      (i->op == IR_LT) fprintf(out, "    setl %%al\n");
-                    else if (i->op == IR_GT) fprintf(out, "    setg %%al\n");
-                    else if (i->op == IR_EQ) fprintf(out, "    sete %%al\n");
-                }
+            case IR_EQ:
+                cargar_operando(i->arg1, "%rax", out);
+                cargar_operando(i->arg2, "%rcx", out);
+                fprintf(out, "    cmpq %%rcx, %%rax\n");
+                fprintf(out, "    movq $0, %%rax\n");
+                if      (i->op == IR_LT) fprintf(out, "    setl %%al\n");
+                else if (i->op == IR_GT) fprintf(out, "    setg %%al\n");
+                else if (i->op == IR_EQ) fprintf(out, "    sete %%al\n");
                 guardar_operando("%rax", i->res, out);
                 break;
-            }
 
             case IR_LABEL:
                 fprintf(out, ".%s:\n", i->res);

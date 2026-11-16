@@ -19,9 +19,8 @@ Además, programé `optimizar_ir()` dentro de un ciclo de **punto fijo** (`while
 
 2.1. Plegado de Constantes y Simplificación Algebraica (`-opt cf`)
 En `pasada_constant_folding()`:
-- Evalúo en tiempo de compilación las operaciones aritméticas (`+`, `-`, `*`, `/`, `%`), relacionales (`<`, `>`), de igualdad (`==`) y unarias (`-`, `!`) cuando sus operandos son constantes enteras, flotantes o booleanas.
+- Evalúo en tiempo de compilación las operaciones aritméticas (`+`, `-`, `*`, `/`, `%`), relacionales (`<`, `>`), de igualdad (`==`) y unarias (`-`, `!`) cuando sus operandos son constantes enteras o booleanas.
   *Cuidado que tuve:* antes de plegar una división `/` o un resto `%`, verifico que el divisor no sea `0` (`b != 0`) para que el compilador no crashee si el programa fuente tiene una división por cero.
-- Pliego también las coerciones sobre constantes: `int2float 60` pasa directamente a `60.0` y `float2int 3.8` pasa a `3` (tal cual el ejemplo `inttoreal(60) -> 60.0` de la filmina 2 de `05-TDS-AST.pdf`).
 - Aplico simplificaciones algebraicas con neutros y absorbentes:
   `x + 0 -> x`, `0 + x -> x`, `x - 0 -> x`, `x - x -> 0`, `x * 1 -> x`, `1 * x -> x`, `x * 0 -> 0` y `x / 1 -> x`.
 
@@ -29,7 +28,7 @@ En `pasada_constant_folding()`:
 En `pasada_copy_propagation()`:
 - Si un temporal tiene una asignación constante `t_k = constante`, reemplazo todas las lecturas de `t_k` en el resto de la función por esa constante.
   *Cuidado que tuve con el corto circuito:* en las expresiones `&&` y `||`, el temporal resultado `t_res` se asigna en **dos lugares distintos** (en la rama que evalúa el segundo operando y en la etiqueta `L_false`/`L_true`). Si propagara ese `t_res` como si tuviera un único valor constante, rompería el corto circuito. Por eso armé `definiciones_de_temporal()` y solo propago temporales que se definen **una única vez** en toda la función.
-- Fusión de temporal con variable destino: cuando una instrucción calcula un valor en `t_k` y la instrucción inmediatamente siguiente es `var = t_k` (siendo ese el único lugar donde se lee `t_k`), hago que la primera instrucción escriba directamente en `var` (exactamente como pasa en la filmina de teoría donde `temp3 := id2 + temp2; id1 := temp3` se reduce a `id1 := id2 + temp1`).
+- Fusión de temporal con variable destino: cuando una instrucción calcula un valor en `t_k` y la instrucción inmediatamente siguiente es `var = t_k` (siendo ese el único lugar donde se lee `t_k`), hago que la primera instrucción escriba directamente en `var` (exactamente como pasa en las filminas de teoría donde `temp3 := id2 + temp2; id1 := temp3` se reduce a `id1 := id2 + temp1`).
 
 2.3. Eliminación de Código Muerto e Inalcanzable (`-opt dce`)
 En `pasada_dead_code_elimination()`:

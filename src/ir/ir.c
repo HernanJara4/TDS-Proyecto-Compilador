@@ -73,48 +73,9 @@ static const char *nombre_efectivo(ASTNode *nodo) {
     return nodo->simbolo->nombre_id;
 }
 
-/* Si el valor en "operando" tiene tipo "t_origen" y se necesita como
- * "t_destino" (Regla 14: coerciones/truncamientos int <-> float), emite
- * una instruccion explicita de conversion y devuelve el nuevo temporal.
- * Si los tipos ya coinciden, devuelve una copia de "operando" sin emitir nada. */
-static char *ajustar_tipo(const char *operando, const char *t_origen, const char *t_destino) {
-    if (operando == NULL)
-        return NULL;
-    if (t_origen == NULL || t_destino == NULL || strcmp(t_origen, t_destino) == 0)
-        return strdup(operando);
-
-    if (strcmp(t_origen, "int") == 0 && strcmp(t_destino, "float") == 0) {
-        char *tmp = nuevo_temporal();
-        emitir(IR_INT2FLOAT, "float", operando, NULL, tmp);
-        return tmp;
-    }
-
-    if (strcmp(t_origen, "float") == 0 && strcmp(t_destino, "int") == 0) {
-        char *tmp = nuevo_temporal();
-        emitir(IR_FLOAT2INT, "int", operando, NULL, tmp);
-        return tmp;
-    }
-
-    return strdup(operando);
-}
-
 /* ---------------------------------------------------------------------
  * Generacion de IR para llamadas a metodos
  * --------------------------------------------------------------------- */
-
-/* Busca el nodo NODE_METODO en el AST para conocer los tipos formales de sus parametros */
-static ASTNode *buscar_metodo_ast(const char *nombre) {
-    if (raiz_ast == NULL || nombre == NULL)
-        return NULL;
-    for (ASTNode *d = raiz_ast->hijo1; d != NULL; d = d->siguiente) {
-        if (d->tipo == NODE_METODO && d->simbolo != NULL &&
-            d->simbolo->nombre_id != NULL &&
-            strcmp(d->simbolo->nombre_id, nombre) == 0) {
-            return d;
-        }
-    }
-    return NULL;
-}
 
 static char *gen_llamada(ASTNode *llamada, int usar_resultado) {
     if (llamada == NULL || llamada->simbolo == NULL)
@@ -122,8 +83,6 @@ static char *gen_llamada(ASTNode *llamada, int usar_resultado) {
 
     const char *nombre_fn = llamada->simbolo->nombre_id;
     const char *tipo_ret  = llamada->simbolo->tipo_dato;
-    ASTNode    *decl_met  = buscar_metodo_ast(nombre_fn);
-    ASTNode    *param_act = (decl_met != NULL) ? decl_met->hijo1 : NULL;
 
     /* 1. Evaluar los argumentos de izquierda a derecha ANTES de emitir
      *    las instrucciones "param". Esto evita que llamadas anidadas como
@@ -135,19 +94,9 @@ static char *gen_llamada(ASTNode *llamada, int usar_resultado) {
     for (ASTNode *arg = llamada->hijo1;
          arg != NULL && cant_args < MAX_PARAMETROS;
          arg = arg->siguiente) {
-        char *raw_arg      = gen_expresion(arg);
-        const char *t_arg  = (arg->simbolo != NULL) ? arg->simbolo->tipo_dato : NULL;
-        const char *t_form = (param_act != NULL && param_act->simbolo != NULL)
-                                 ? param_act->simbolo->tipo_dato
-                                 : t_arg;
-
-        operandos_args[cant_args] = ajustar_tipo(raw_arg, t_arg, t_form);
-        tipos_args[cant_args]     = t_form;
-        free(raw_arg);
-
+        operandos_args[cant_args] = gen_expresion(arg);
+        tipos_args[cant_args]     = (arg->simbolo != NULL) ? arg->simbolo->tipo_dato : NULL;
         cant_args++;
-        if (param_act != NULL)
-            param_act = param_act->siguiente;
     }
 
     /* 2. Emitir todos los "param" contiguos justo antes del "call" */
@@ -262,27 +211,9 @@ static char *gen_expresion(ASTNode *expr) {
                 return tmp_res;
             }
 
-            /* Resto de operadores binarios: evaluar ambos operandos de izq a der */
-            char *raw_izq = gen_expresion(expr->hijo1);
-            char *raw_der = gen_expresion(expr->hijo2);
-
-            const char *t_izq = (expr->hijo1->simbolo != NULL) ? expr->hijo1->simbolo->tipo_dato : NULL;
-            const char *t_der = (expr->hijo2->simbolo != NULL) ? expr->hijo2->simbolo->tipo_dato : NULL;
-
-            /* Determinar el tipo comun de operacion (por si un operando es int y otro float) */
-            const char *t_comun = t_izq;
-            if ((t_izq != NULL && strcmp(t_izq, "float") == 0) ||
-                (t_der != NULL && strcmp(t_der, "float") == 0)) {
-                t_comun = "float";
-            }
-            if (strcmp(op, "%") == 0)
-                t_comun = "int";
-
-            char *izq = ajustar_tipo(raw_izq, t_izq, t_comun);
-            char *der = ajustar_tipo(raw_der, t_der, t_comun);
-            free(raw_izq);
-            free(raw_der);
-
+            /* Operadores aritmeticos y relacionales (+, -, *, /, %, <, >, ==) */
+            char *izq = gen_expresion(expr->hijo1);
+            char *der = gen_expresion(expr->hijo2);
             char *tmp = nuevo_temporal();
 
             if      (strcmp(op, "+") == 0)  emitir(IR_ADD, tipo, izq, der, tmp);
@@ -316,17 +247,10 @@ static void gen_sentencia(ASTNode *stmt) {
         case NODE_ASIGNACION: {
             const char *destino = nombre_efectivo(stmt);
             const char *t_dest  = stmt->simbolo->tipo_dato;
-            const char *t_expr  = (stmt->hijo1 != NULL && stmt->hijo1->simbolo != NULL)
-                                      ? stmt->hijo1->simbolo->tipo_dato
-                                      : NULL;
+            char       *val     = gen_expresion(stmt->hijo1);
 
-            char *val_raw = gen_expresion(stmt->hijo1);
-            char *val_adj = ajustar_tipo(val_raw, t_expr, t_dest);
-
-            emitir(IR_ASN, t_dest, val_adj, NULL, destino);
-
-            free(val_raw);
-            free(val_adj);
+            emitir(IR_ASN, t_dest, val, NULL, destino);
+            free(val);
             break;
         }
 
@@ -393,16 +317,9 @@ static void gen_sentencia(ASTNode *stmt) {
         case NODE_RETORNO: {
             const char *t_metodo = (stmt->simbolo != NULL) ? stmt->simbolo->tipo_dato : "void";
             if (stmt->hijo1 != NULL) {
-                const char *t_expr = (stmt->hijo1->simbolo != NULL)
-                                         ? stmt->hijo1->simbolo->tipo_dato
-                                         : NULL;
-                char *val_raw = gen_expresion(stmt->hijo1);
-                char *val_adj = ajustar_tipo(val_raw, t_expr, t_metodo);
-
-                emitir(IR_RET, t_metodo, val_adj, NULL, NULL);
-
-                free(val_raw);
-                free(val_adj);
+                char *val = gen_expresion(stmt->hijo1);
+                emitir(IR_RET, t_metodo, val, NULL, NULL);
+                free(val);
             } else {
                 emitir(IR_RET, "void", NULL, NULL, NULL);
             }
@@ -502,12 +419,6 @@ void imprimir_ir(InstruccionIR *lista, FILE *out) {
                 break;
             case IR_ASN:
                 fprintf(out, "    %s = %s\n", i->res, i->arg1);
-                break;
-            case IR_INT2FLOAT:
-                fprintf(out, "    %s = int2float %s\n", i->res, i->arg1);
-                break;
-            case IR_FLOAT2INT:
-                fprintf(out, "    %s = float2int %s\n", i->res, i->arg1);
                 break;
             case IR_ADD:
                 fprintf(out, "    %s = %s + %s\n", i->res, i->arg1, i->arg2);

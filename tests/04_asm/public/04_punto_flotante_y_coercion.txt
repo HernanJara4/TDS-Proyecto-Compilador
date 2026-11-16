@@ -1,15 +1,23 @@
-// Test ASM 04: Punto flotante (SSE) y coerciones int <-> float (Regla 14).
-// Calcula (7 + 2.5) * 2.0 = 19.0 y lo trunca a int al retornar:
-// exit code esperado: 19.
+// Test ASM 04: Operaciones combinadas con division entera, resto (%) y booleanos.
+// Calcula (37 / 5) * 2 + (37 % 5) = 7 * 2 + 2 = 16, y si es_impar(3) suma 3 -> 19.
+// Exit code esperado: 19.
 
-float operar_float(int a, float b) {
-    float suma;
-    suma = a + b;
-    return suma * 2.0;
+boolean es_impar(int n) {
+    return !((n % 2) == 0);
+}
+
+int calcular(int a, int b) {
+    int cociente, resto;
+    cociente = a / b;
+    resto = a % b;
+    return cociente * 2 + resto;
 }
 
 int main() {
-    int resultado_entero;
-    resultado_entero = operar_float(7, 2.5);
-    return resultado_entero;
+    int res;
+    res = calcular(37, 5);
+    if (es_impar(3)) {
+        res = res + 3;
+    }
+    return res;
 }

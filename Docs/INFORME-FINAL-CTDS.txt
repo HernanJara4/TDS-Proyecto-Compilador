@@ -90,9 +90,11 @@ módulos de cada fase en subcarpetas dentro de `src/`:
 
 2.3. Etapa 3: Generador de Código Intermedio (`ir.h` / `ir.c`)
 - **Lista enlazada de Cuádruplas (`InstruccionIR`):**
-  Traduzco el AST anotado a una secuencia lineal en memoria de instrucciones de
-  Tres Direcciones `(op, tipo, arg1, arg2, res, siguiente)` con inserción en
-  $O(1)$ al final de la lista.
+  Siguiendo el alcance pedido en `00-TDS-proyecto.pdf` (pág. 2), traduzco el AST
+  anotado para tipos enteros (`int`), lógicos (`boolean`) y estructuras de
+  control a una secuencia lineal en memoria de instrucciones de Tres Direcciones
+  `(op, tipo, arg1, arg2, res, siguiente)` con inserción en $O(1)$ al final de la
+  lista.
 - **Corto Circuito en `&&` y `||`:**
   Para cumplir con la especificación (pág. 5), traduje `&&` y `||` mediante
   saltos condicionales (`IR_JMP_FALSE` e `IR_JMP_TRUE`) y etiquetas, garantizando
@@ -109,9 +111,6 @@ módulos de cada fase en subcarpetas dentro de `src/`:
   locales llamadas `x` en distintos niveles de la misma función colisionarían.
   Lo resolví asignándoles un alias único (`x.1`, `x.2`) en `typecheck.c` cuando
   `nivel_actual >= 2` oculta una variable local previa de la misma función.
-- **Coerciones explícitas (`int2float` y `float2int`):**
-  La función `ajustar_tipo()` inserta instrucciones de conversión explícitas
-  cuando operan o se asignan valores entre `int` y `float` (Regla 14).
 
 2.4. Etapa 4: Generador de Código Objeto Assembly x86-64 (`codegen.h` / `codegen.c`)
 - **Stack Frame completo por función y ABI de Linux x86-64:**
@@ -125,20 +124,18 @@ módulos de cada fase en subcarpetas dentro de `src/`:
   6 argumentos se pasan en `%rdi`, `%rsi`, `%rdx`, `%rcx`, `%r8`, `%r9` y en el
   prólogo de la función llamada se copian a sus slots `-offset(%rbp)` para que
   sobrevivan a llamadas recursivas o anidadas.
-- **Aritmética entera y punto flotante SSE:**
-  Para división entera y módulo (`/` y `%`) uso `cqto` antes de `idivq %rcx`.
-  Para punto flotante (`float`), codifico los literales en su representación
-  hexadecimal IEEE-754 de 32 bits y opero en los registros `%xmm0` y `%xmm1`
-  usando `addss`, `subss`, `mulss`, `divss`, `ucomiss`, `cvtsi2ssq` y
-  `cvttss2siq`.
+- **Aritmética entera y lógica booleana:**
+  Uso los registros de trabajo `%rax` y `%rcx` con `addq`, `subq`, `imulq`,
+  `negq`, y `cqto` antes de `idivq %rcx` para `/` y `%`. Para las comparaciones
+  (`<`, `>`, `==`) y `!` uso `cmpq` junto con `setl %al`, `setg %al` y `sete %al`.
 
 2.5. Etapa 5: Optimizador de Código Intermedio (`optimizer.h` / `optimizer.c`)
 - Cuando se invoca con `-opt` (`all`, `cf`, `cp`, `dce`), `optimizar_ir()`
   ejecuta en un ciclo de punto fijo tres pasadas sobre la lista de cuádruplas:
   1) **Plegado de Constantes y Simplificación Algebraica (`cf`):** evalúa en
-     compilación operaciones sobre constantes enteras, flotantes, booleanas y
-     coerciones (`int2float 60 -> 60.0`), y simplifica identidades algebraicas
-     (`x + 0 -> x`, `x * 1 -> x`, `x * 0 -> 0`, `x - x -> 0`, `x / 1 -> x`).
+     compilación operaciones sobre constantes enteras y booleanas, y simplifica
+     identidades algebraicas (`x + 0 -> x`, `x * 1 -> x`, `x * 0 -> 0`,
+     `x - x -> 0`, `x / 1 -> x`).
   2) **Propagación de Constantes y Fusión de Copias (`cp`):** propaga temporales
      constantes de única definición y fusiona asignaciones `t_k = op; var = t_k`
      en `var = op`.
@@ -148,19 +145,16 @@ módulos de cada fase en subcarpetas dentro de `src/`:
      siempre las instrucciones `IR_CALL` por sus posibles efectos laterales).
 
 
-3. CAMBIOS REALIZADOS EN ETAPAS ANTERIORES Y PROBLEMAS RESUELTOS
+3. CAMBIOS REALIZADOS EN ETAPAS ANTERIORES
 --------------------------------------------------------------------------------
-1. **Inclusión del guion bajo `_` en `Gramatica.l`:**
-   Al revisar la especificación de `<alpha_num>` para la Etapa 2, agregué `_` a
-   los caracteres permitidos luego de la primera letra de un identificador y
-   activé `%option nounput` y `%option noinput` para compilar sin warnings.
-2. **Formateo de literales `float` con parte decimal `.0` en `Gramatica.y`:**
-   Durante el testing de ejecución de binarios en la Etapa 4
-   (`04_punto_flotante_y_coercion.txt`), detecté que `snprintf(..., "%g", $1)`
-   en `Gramatica.y` recortaba el `.0` de literales como `2.0`, dejándolos como
-   `"2"`. Eso hacía que el generador de Assembly interpretara `"2"` como una
-   constante entera en vez de un `float` IEEE-754. Lo solucioné en `Gramatica.y`
-   conservando siempre el `.0` en los tokens `FLOTANTE`.
+- **Inclusión del guion bajo `_` en `Gramatica.l`:**
+  Al revisar la especificación de `<alpha_num>` para la Etapa 2, agregué `_` a
+  los caracteres permitidos luego de la primera letra de un identificador y
+  activé `%option nounput` y `%option noinput` para compilar sin warnings.
+- **Separación de `main()` en `src/main.c`:**
+  A partir de la Etapa 2 trasladé la función `main()` desde `Gramatica.y` hacia
+  `src/main.c` para centralizar la interfaz de línea de comandos (`-target`,
+  `-opt`, `-o`, `-debug`) y la generación de archivos por etapa.
 
 
 4. TESTING Y VERIFICACIÓN

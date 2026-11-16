@@ -2,14 +2,14 @@ ETAPA 4 - Generador de Código Objeto Assembly x86-64 (`codegen.h` / `codegen.c`
 Autor: Hernán Jara
 ================================================================================
 
-1. Estrategia general de traducción a x86-64
---------------------------------------------
-En esta etapa implementé en `include/codegen.h` y `src/asm/codegen.c` la traducción de la lista de instrucciones de Tres Direcciones (`InstruccionIR *`) a código Assembly x86-64 en sintaxis AT&T para Linux (GCC).
+1. Estrategia general de traducción a x86-64 (Enteros y Booleanos)
+------------------------------------------------------------------
+En esta etapa implementé en `include/codegen.h` y `src/asm/codegen.c` la traducción de la lista de instrucciones de Tres Direcciones (`InstruccionIR *`) a código Assembly x86-64 en sintaxis AT&T para Linux (GCC), abarcando los tipos enteros (`int`), lógicos (`boolean`), control de flujo e invocación de métodos.
 
 Como recomienda el PDF del proyecto (pág. 2), prioricé que el código generado sea 100% correcto y fácil de seguir antes que hacer un asignador complejo de registros. Para eso armé un esquema de **Stack Frame completo por función**:
 - Las variables globales (`IR_GLOBAL`) se declaran en la sección `.bss` reservando 8 bytes alineados para cada una (`.zero 8`) y se acceden con direccionamiento relativo a `%rip`: `nombre(%rip)`.
 - Para cada función (`IR_FUNC_BEGIN` hasta `IR_FUNC_END`), antes de emitir su código recorro sus instrucciones con `construir_frame_funcion()` y le asigno un slot de **8 bytes** en la pila (`-8(%rbp)`, `-16(%rbp)`, `-24(%rbp)`, ...) a cada parámetro formal, a cada variable local y a cada temporal (`t0`, `t1`...).
-- Luego, al traducir cada cuádrupla, cargo los operandos en registros de trabajo fijos (`%rax` y `%rcx` para enteros y booleanos; `%xmm0` y `%xmm1` para `float`), ejecuto la instrucción x86-64 correspondiente y guardo el resultado en el `-offset(%rbp)` de destino.
+- Luego, al traducir cada cuádrupla, cargo los operandos en registros de trabajo fijos (`%rax` y `%rcx`), ejecuto la instrucción x86-64 correspondiente (`addq`, `subq`, `imulq`, `idivq`, `negq`, `cmpq`) y guardo el resultado en el `-offset(%rbp)` de destino.
 
 La gran ventaja de guardar todos los locales y temporales en el Stack Frame es que ningún valor temporal se pierde nunca cuando hay una instrucción `call` en el medio de una expresión.
 
@@ -32,17 +32,8 @@ Siguiendo la ABI de Linux:
 - Apenas empieza la función llamada (`IR_PARAM_DECL`), copio cada parámetro desde su registro (`%rdi`, `%rsi`, ...) hacia su slot `-offset(%rbp)` en la pila.
 Hacer esa copia en el prólogo fue clave para que funcionen bien las funciones recursivas como `factorial(n)`: cuando `factorial` prepara la llamada recursiva a `factorial(n - 1)`, pisa `%rdi` con `n - 1`, pero su propio parámetro `n` queda a salvo en `-8(%rbp)` para poder multiplicarlo cuando vuelve del `call`.
 
-2.4. Punto flotante (`float`) con registros SSE y constantes IEEE-754
-Como el ensamblador x86-64 no permite escribir literales flotantes como inmediatos (`movss $2.5, %xmm0` no existe), en `cargar_operando()` convierto el `float` a su patrón de 32 bits IEEE-754 en hexadecimal (`memcpy(&bits, &valor_f, 4)`), lo cargo con `movq $0x..., %rax` y lo paso a `%xmm0` / `%xmm1` con `movd %eax, %xmm0`.
-Para las operaciones reales uso `addss`, `subss`, `mulss`, `divss` y `ucomiss`, y para las coerciones de la Regla 14 uso las instrucciones nativas de conversión:
-- `int2float`: `cvtsi2ssq %rax, %xmm0`
-- `float2int`: `cvttss2siq %xmm0, %rax`
+2.4. Comparaciones relacionales y booleanas (`cmpq` + `setl`/`setg`/`sete`)
+Para traducir `<`, `>`, `==` y `!`, comparo los operandos con `cmpq`, pongo `%rax` en `0` (`movq $0, %rax`) y uso las instrucciones `setl %al` (`<`), `setg %al` (`>`) o `sete %al` (`==` y `!`) para dejar `1` (`true`) o `0` (`false`) en `%rax`.
 
 2.5. Etiquetas locales con prefijo `.L`
 A las etiquetas generadas por el IR (`L0`, `L1`...) les agrego un punto adelante al pasarlas a Assembly (`.L0:`, `jmp .L0`) para que el ensamblador las trate como etiquetas locales y nunca choquen con nombres de funciones del programa.
-
-
-3. Bug de una etapa anterior que detecté probando los binarios
---------------------------------------------------------------
-Al armar el test `04_punto_flotante_y_coercion.txt` y ejecutar el binario compilado, noté que devolvía `0` en lugar de `19`. Revisando el IR y el Assembly generados, encontré que el literal `2.0` se estaba guardando en `Gramatica.y` usando `snprintf(buf, sizeof buf, "%g", $1)`. El formato `%g` de C le borraba el `.0` final y dejaba `"2"`, haciendo que `codegen.c` lo confundiera con el entero `2` en lugar del flotante `2.0` (`0x40000000`).
-Lo corregí en `Gramatica.y` asegurándome de que si `%g` no deja punto decimal en un token `FLOTANTE`, se le agregue `".0"`. Con ese arreglo el test dio exactamente `19`.

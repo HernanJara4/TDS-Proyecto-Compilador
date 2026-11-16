@@ -31,28 +31,12 @@ static int es_const_entera(const char *s) {
     return 1;
 }
 
-static int es_const_flotante(const char *s) {
-    if (s == NULL || *s == '\0')
-        return 0;
-    int tiene_punto = 0;
-    int i = (s[0] == '-') ? 1 : 0;
-    if (s[i] == '\0')
-        return 0;
-    for (; s[i] != '\0'; i++) {
-        if (s[i] == '.')
-            tiene_punto = 1;
-        else if (!isdigit((unsigned char)s[i]))
-            return 0;
-    }
-    return tiene_punto;
-}
-
 static int es_const_booleana(const char *s) {
     return s != NULL && (strcmp(s, "true") == 0 || strcmp(s, "false") == 0);
 }
 
 static int es_constante(const char *s) {
-    return es_const_entera(s) || es_const_flotante(s) || es_const_booleana(s);
+    return es_const_entera(s) || es_const_booleana(s);
 }
 
 static void reemplazar_str(char **campo, const char *nuevo) {
@@ -61,12 +45,6 @@ static void reemplazar_str(char **campo, const char *nuevo) {
     char *copia = (nuevo != NULL) ? strdup(nuevo) : NULL;
     free(*campo);
     *campo = copia;
-}
-
-static void formatear_float(char *buf, size_t tam, float val) {
-    snprintf(buf, tam, "%g", val);
-    if (strchr(buf, '.') == NULL && strchr(buf, 'e') == NULL)
-        strncat(buf, ".0", tam - strlen(buf) - 1);
 }
 
 /* Convierte una instruccion en una asignacion simple: res = nuevo_arg1 */
@@ -100,36 +78,12 @@ static int pasada_constant_folding(InstruccionIR *lista) {
     char buf[64];
 
     for (InstruccionIR *i = lista; i != NULL; i = i->siguiente) {
-        /* Conversiones de tipo sobre constantes (ej. int2float 60 -> 60.0) */
-        if (i->op == IR_INT2FLOAT && es_const_entera(i->arg1)) {
-            float v = (float)atoi(i->arg1);
-            formatear_float(buf, sizeof buf, v);
-            convertir_en_asignacion(i, buf);
-            cambios++;
-            continue;
-        }
-        if (i->op == IR_FLOAT2INT && es_const_flotante(i->arg1)) {
-            int v = (int)atof(i->arg1);
-            snprintf(buf, sizeof buf, "%d", v);
-            convertir_en_asignacion(i, buf);
-            cambios++;
-            continue;
-        }
-
         /* Operadores unarios sobre constantes */
-        if (i->op == IR_NEG) {
-            if (es_const_entera(i->arg1)) {
-                snprintf(buf, sizeof buf, "%d", -atoi(i->arg1));
-                convertir_en_asignacion(i, buf);
-                cambios++;
-                continue;
-            }
-            if (es_const_flotante(i->arg1)) {
-                formatear_float(buf, sizeof buf, -(float)atof(i->arg1));
-                convertir_en_asignacion(i, buf);
-                cambios++;
-                continue;
-            }
+        if (i->op == IR_NEG && es_const_entera(i->arg1)) {
+            snprintf(buf, sizeof buf, "%d", -atoi(i->arg1));
+            convertir_en_asignacion(i, buf);
+            cambios++;
+            continue;
         }
         if (i->op == IR_NOT && es_const_booleana(i->arg1)) {
             const char *neg = (strcmp(i->arg1, "true") == 0) ? "false" : "true";
@@ -191,51 +145,6 @@ static int pasada_constant_folding(InstruccionIR *lista) {
             }
         }
 
-        /* Operadores binarios sobre dos constantes flotantes */
-        if (es_const_flotante(i->arg1) && es_const_flotante(i->arg2)) {
-            float a = (float)atof(i->arg1);
-            float b = (float)atof(i->arg2);
-            switch (i->op) {
-                case IR_ADD:
-                    formatear_float(buf, sizeof buf, a + b);
-                    convertir_en_asignacion(i, buf);
-                    cambios++;
-                    continue;
-                case IR_SUB:
-                    formatear_float(buf, sizeof buf, a - b);
-                    convertir_en_asignacion(i, buf);
-                    cambios++;
-                    continue;
-                case IR_MUL:
-                    formatear_float(buf, sizeof buf, a * b);
-                    convertir_en_asignacion(i, buf);
-                    cambios++;
-                    continue;
-                case IR_DIV:
-                    if (b != 0.0f) {
-                        formatear_float(buf, sizeof buf, a / b);
-                        convertir_en_asignacion(i, buf);
-                        cambios++;
-                        continue;
-                    }
-                    break;
-                case IR_LT:
-                    convertir_en_asignacion(i, (a < b) ? "true" : "false");
-                    cambios++;
-                    continue;
-                case IR_GT:
-                    convertir_en_asignacion(i, (a > b) ? "true" : "false");
-                    cambios++;
-                    continue;
-                case IR_EQ:
-                    convertir_en_asignacion(i, (a == b) ? "true" : "false");
-                    cambios++;
-                    continue;
-                default:
-                    break;
-            }
-        }
-
         /* Igualdad entre constantes booleanas */
         if (i->op == IR_EQ && es_const_booleana(i->arg1) && es_const_booleana(i->arg2)) {
             convertir_en_asignacion(i, (strcmp(i->arg1, i->arg2) == 0) ? "true" : "false");
@@ -245,37 +154,36 @@ static int pasada_constant_folding(InstruccionIR *lista) {
 
         /* Simplificaciones algebraicas (identidades con 0 y 1) */
         if (i->op == IR_ADD) {
-            if (i->arg1 != NULL && (strcmp(i->arg1, "0") == 0 || strcmp(i->arg1, "0.0") == 0)) {
+            if (i->arg1 != NULL && strcmp(i->arg1, "0") == 0) {
                 convertir_en_asignacion(i, i->arg2);
                 cambios++;
                 continue;
             }
-            if (i->arg2 != NULL && (strcmp(i->arg2, "0") == 0 || strcmp(i->arg2, "0.0") == 0)) {
+            if (i->arg2 != NULL && strcmp(i->arg2, "0") == 0) {
                 convertir_en_asignacion(i, i->arg1);
                 cambios++;
                 continue;
             }
         }
         if (i->op == IR_SUB) {
-            if (i->arg2 != NULL && (strcmp(i->arg2, "0") == 0 || strcmp(i->arg2, "0.0") == 0)) {
+            if (i->arg2 != NULL && strcmp(i->arg2, "0") == 0) {
                 convertir_en_asignacion(i, i->arg1);
                 cambios++;
                 continue;
             }
-            if (i->arg1 != NULL && i->arg2 != NULL && strcmp(i->arg1, i->arg2) == 0 &&
-                i->tipo != NULL && strcmp(i->tipo, "int") == 0) {
+            if (i->arg1 != NULL && i->arg2 != NULL && strcmp(i->arg1, i->arg2) == 0) {
                 convertir_en_asignacion(i, "0");
                 cambios++;
                 continue;
             }
         }
         if (i->op == IR_MUL) {
-            if (i->arg1 != NULL && (strcmp(i->arg1, "1") == 0 || strcmp(i->arg1, "1.0") == 0)) {
+            if (i->arg1 != NULL && strcmp(i->arg1, "1") == 0) {
                 convertir_en_asignacion(i, i->arg2);
                 cambios++;
                 continue;
             }
-            if (i->arg2 != NULL && (strcmp(i->arg2, "1") == 0 || strcmp(i->arg2, "1.0") == 0)) {
+            if (i->arg2 != NULL && strcmp(i->arg2, "1") == 0) {
                 convertir_en_asignacion(i, i->arg1);
                 cambios++;
                 continue;
@@ -288,7 +196,7 @@ static int pasada_constant_folding(InstruccionIR *lista) {
             }
         }
         if (i->op == IR_DIV) {
-            if (i->arg2 != NULL && (strcmp(i->arg2, "1") == 0 || strcmp(i->arg2, "1.0") == 0)) {
+            if (i->arg2 != NULL && strcmp(i->arg2, "1") == 0) {
                 convertir_en_asignacion(i, i->arg1);
                 cambios++;
                 continue;
@@ -303,9 +211,6 @@ static int pasada_constant_folding(InstruccionIR *lista) {
  * 2. Propagacion de Constantes y Fusion de Copias de Temporales
  * --------------------------------------------------------------------- */
 
-/* Determina si un temporal t_k es asignado exactamente una sola vez en la
- * funcion (lo cual ocurre para los temporales de expresiones aritmeticas,
- * pero no para el temporal compartido en las dos ramas de && o ||). */
 static int definiciones_de_temporal(InstruccionIR *inicio_fn, const char *tmp) {
     int defs = 0;
     for (InstruccionIR *i = inicio_fn; i != NULL && i->op != IR_FUNC_END; i = i->siguiente) {
@@ -346,8 +251,7 @@ static int pasada_copy_propagation(InstruccionIR *lista) {
         /* B. Fusion de temporal intermedio con su variable destino:
          *    Si "i" calcula un valor en "t_k" y la siguiente instruccion "sig"
          *    es "var = t_k" (donde t_k solo se usa en "sig"), escribir el
-         *    resultado de "i" directamente en "var" (como en la filmina 2
-         *    de 05-TDS-AST.pdf: id1 := id2 + temp1). */
+         *    resultado de "i" directamente en "var". */
         InstruccionIR *sig = i->siguiente;
         if (sig != NULL && sig->op == IR_ASN &&
             i->res != NULL && es_temporal(i->res) &&
@@ -358,8 +262,6 @@ static int pasada_copy_propagation(InstruccionIR *lista) {
             contar_usos_en_funcion(inicio_fn, i->res) == 1) {
 
             reemplazar_str(&i->res, sig->res);
-            /* Ahora "sig" queda como una asignacion redundante "var = var"
-             * que sera limpiada por la pasada de eliminacion de codigo muerto. */
             reemplazar_str(&sig->arg1, sig->res);
             cambios++;
         }
@@ -382,7 +284,6 @@ static void liberar_instruccion_unica(InstruccionIR *inst) {
     free(inst);
 }
 
-/* Cuenta cuantos saltos (IR_JMP, IR_JMP_FALSE, IR_JMP_TRUE) apuntan a "etiqueta" */
 static int contar_saltos_a_etiqueta(InstruccionIR *inicio_fn, const char *etiqueta) {
     if (etiqueta == NULL)
         return 0;
@@ -404,12 +305,10 @@ static int pasada_dead_code_elimination(InstruccionIR *lista) {
     for (InstruccionIR *i = lista; i != NULL; i = i->siguiente) {
         if (i->op == IR_JMP_FALSE && es_const_booleana(i->arg1)) {
             if (strcmp(i->arg1, "false") == 0) {
-                /* ifFalse false goto L -> siempre salta: se vuelve goto L */
                 i->op = IR_JMP;
                 reemplazar_str(&i->arg1, NULL);
                 cambios++;
             } else {
-                /* ifFalse true goto L -> nunca salta: marcar como x = x nop */
                 i->op = IR_ASN;
                 reemplazar_str(&i->arg1, NULL);
                 reemplazar_str(&i->res, NULL);
@@ -417,12 +316,10 @@ static int pasada_dead_code_elimination(InstruccionIR *lista) {
             }
         } else if (i->op == IR_JMP_TRUE && es_const_booleana(i->arg1)) {
             if (strcmp(i->arg1, "true") == 0) {
-                /* ifTrue true goto L -> siempre salta: se vuelve goto L */
                 i->op = IR_JMP;
                 reemplazar_str(&i->arg1, NULL);
                 cambios++;
             } else {
-                /* ifTrue false goto L -> nunca salta */
                 i->op = IR_ASN;
                 reemplazar_str(&i->arg1, NULL);
                 reemplazar_str(&i->res, NULL);
@@ -431,7 +328,7 @@ static int pasada_dead_code_elimination(InstruccionIR *lista) {
         }
     }
 
-    /* 3.2. Eliminar código inalcanzable inmediatamente despues de "goto" o "return"
+    /* 3.2. Eliminar codigo inalcanzable inmediatamente despues de "goto" o "return"
      *      hasta la proxima etiqueta (IR_LABEL) o fin de funcion (IR_FUNC_END). */
     for (InstruccionIR *i = lista; i != NULL; i = i->siguiente) {
         if (i->op == IR_JMP || i->op == IR_RET) {
@@ -448,9 +345,8 @@ static int pasada_dead_code_elimination(InstruccionIR *lista) {
         }
     }
 
-    /* 3.3. Eliminar asignaciones redundantes (x = x), NOPs y temporales cuyos
-     *      valores nunca se leen en el resto de la funcion (excepto IR_CALL,
-     *      que debe conservarse por sus posibles efectos laterales). */
+    /* 3.3. Eliminar asignaciones redundantes (x = x), saltos a etiqueta contigua,
+     *      etiquetas sin referencias y temporales no leidos. */
     InstruccionIR *prev = NULL;
     InstruccionIR *act  = lista;
 
@@ -467,8 +363,7 @@ static int pasada_dead_code_elimination(InstruccionIR *lista) {
             borrar = 1;
         }
 
-        /* Salto incondicional a la etiqueta inmediatamente siguiente:
-         * "goto L1" seguido de "L1:" es redundante. */
+        /* Salto incondicional a la etiqueta inmediatamente siguiente */
         if (!borrar && act->op == IR_JMP && act->siguiente != NULL &&
             act->siguiente->op == IR_LABEL &&
             act->res != NULL && act->siguiente->res != NULL &&
@@ -519,7 +414,6 @@ int optimizar_ir(InstruccionIR *lista, const char *modo_opt) {
     int total_cambios = 0;
     int iteraciones   = 0;
 
-    /* Ciclo de punto fijo (hasta que ninguna pasada produzca nuevos cambios) */
     while (iteraciones < 32) {
         int cambios_ronda = 0;
 

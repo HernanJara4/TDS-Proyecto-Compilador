@@ -1,16 +1,15 @@
-// Test IR 02: Coerciones int -> float y truncamientos float -> int (Regla 14).
-// Verifica que se emitan instrucciones explicitas int2float y float2int.
+// Test IR 02: Expresiones booleanas, relacionales y asignaciones.
+// Verifica la generacion de temporales para <, >, == y !.
 
-float escalar(float x, int factor) {
-    return x * factor; // factor (int) se convierte con int2float
+boolean es_par(int x) {
+    return (x % 2) == 0;
 }
 
 void main() {
-    int entero;
-    float real;
+    int n;
+    boolean b1, b2;
 
-    entero = 7;
-    real = entero + 2.5;         // int2float sobre entero
-    entero = real;               // float2int al truncar en asignacion
-    real = escalar(entero, 3.8); // int2float en arg 1, float2int en arg 2
+    n = 8;
+    b1 = n > 0;
+    b2 = !es_par(n);
 }
