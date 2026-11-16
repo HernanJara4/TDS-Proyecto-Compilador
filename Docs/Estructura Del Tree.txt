@@ -1,51 +1,53 @@
-TDS-Proyecto-Compilador/
-├── Makefile                 # Automatiza la compilación con GCC (flex, bison y dependencias de C)
-├── README.md                # Descripción del proyecto y comandos básicos de ejecución
-├── src/                     # Código fuente (.c, .l, .y)
-│   ├── main.c               # Punto de entrada. Maneja los argumentos de la línea de comandos (-o, -target, -opt, -debug)
+Organización del Proyecto C-TDS (Hernán Jara)
+=============================================
+
+TDS-HernanJara/
+├── Makefile                 # Automatiza la compilación (bison, flex y gcc) y la ejecución de tests
+├── README.md                # Instrucciones rápidas para compilar y correr los casos de prueba
+├── src/                     # Código fuente del compilador (.c, .l, .y)
+│   ├── main.c               # Punto de entrada: procesa los flags (-o, -target, -opt, -debug)
 │   ├── scanner/
-│   │   └── gramatica.l      # Especificación para Flex (Analizador Léxico)
+│   │   └── Gramatica.l      # Especificación para Flex (Analizador Léxico)
 │   ├── parser/
-│   │   └── gramatica.y      # Especificación para Bison (Analizador Sintáctico)
+│   │   └── Gramatica.y      # Especificación para Bison (Analizador Sintáctico y armado del AST)
 │   ├── ast/
-│   │   ├── ast.c            # Funciones para crear y recorrer el Árbol de Sintaxis Abstracta
-│   │   └── ast_eval.c       # Lógica del evaluador/intérprete del AST
+│   │   └── ast.c            # Funciones para crear nodos, encadenar listas, imprimir y liberar el AST
 │   ├── semantic/
-│   │   ├── symtable.c       # Implementación de la Tabla de Símbolos (TAD, pila de niveles)
-│   │   └── typecheck.c      # Verificación de tipos y reglas semánticas
+│   │   ├── tabla.c          # Implementación de la Tabla de Símbolos (pila de niveles)
+│   │   └── typecheck.c      # Recorrido semántico, chequeo de las 14 reglas y anotación de tipos
 │   ├── ir/
-│   │   └── ir.c             # Generación del Código Intermedio (Tres direcciones)
+│   │   └── ir.c             # Generación de Código Intermedio de Tres Direcciones (cuádruplas)
 │   ├── asm/
-│   │   └── codegen.c        # Traducción del IR a assembly x86-64
-│   ├── opt/
-│   │   └── optimizer.c      # Lógica para la etapa de optimizaciones
-│   └── utils/
-│       └── errors.c         # Funciones centralizadas para reportar errores léxicos, sintácticos o semánticos
-├── include/                 # Archivos de cabecera (.h) para interconectar los módulos de src/
+│   │   └── codegen.c        # Traducción del Código Intermedio a Assembly x86-64
+│   └── opt/
+│       └── optimizer.c      # Pasadas de optimización sobre el Código Intermedio (-opt)
+├── include/                 # Cabeceras (.h) que comunican las etapas entre sí
 │   ├── ast.h
-│   ├── symtable.h
+│   ├── tabla.h
+│   ├── typecheck.h
 │   ├── ir.h
-│   └── globals.h            # Definiciones globales (ej. tokens si no los genera bison automáticamente)
-├── build/                   # Archivos temporales generados durante la compilación
-│   ├── lex.yy.c             # Código C generado por Flex
-│   ├── y.tab.c              # Código C generado por Bison
-│   ├── y.tab.h              # Cabecera generada por Bison
-│   ├── *.o                  # Archivos objeto compilados
-│   └── c-tds                # El ejecutable final del compilador
-├── tests/                   # Casos de prueba para evaluar la implementación
-│   ├── public/              # Casos de test públicos provistos por la cátedra
-│   └── private/             # Casos de test no públicos desarrollados por tu grupo
-└── docs/                    # Documentación requerida para las entregas
-    ├── diseno.txt           # Decisiones de diseño, asunciones, justificaciones y división del trabajo
-    └── bugs.txt             # Problemas conocidos y reportes de casos donde el compilador falla
+│   ├── codegen.h
+│   └── optimizer.h
+├── build/                   # Archivos generados al compilar y ejecutable final (c-tds)
+├── tests/                   # Baterías de prueba divididas por cada etapa del compilador
+│   ├── 01_scanner_parser/
+│   ├── 02_semantic/
+│   ├── 03_ir/
+│   ├── 04_asm/
+│   └── 05_opt/
+└── Docs/                    # Documentación de diseño de cada etapa e informe final
 
 
-¿Por qué esta estructura?
+¿Por qué armé esta estructura de carpetas?
 
-1 - src/ y include/ separados: Al aislar los archivos .c (en src/) de los .h (en include/), mantienes las interfaces limpias. Cuando la generación de código intermedio necesite consultar el árbol, simplemente incluirá ast.h, sin acoplarse a cómo está implementado en ast.c.
+1. Separar `src/` e `include/`:
+   Aislar las cabeceras `.h` de las implementaciones `.c` me permitió mantener interfaces limpias entre etapas. Por ejemplo, cuando el generador de código intermedio (`ir.c`) necesita leer el árbol, solo incluye `ast.h` sin depender de los detalles internos de `ast.c`.
 
-2 - Modularización por fases en src/: Cada carpeta dentro de src/ representa un hito del proyecto. Esto te permite asignar tareas fácilmente entre los integrantes del grupo y evitar archivos monolíticos de miles de líneas.
+2. Una carpeta por cada etapa en `src/`:
+   Como el proyecto de la materia es incremental, dividir `scanner/`, `parser/`, `ast/`, `semantic/`, `ir/`, `asm/` y `opt/` me ayudó a trabajar de forma ordenada etapa por etapa sin terminar con un único archivo gigante difícil de depurar.
 
-3 - El directorio build/: Todo lo que se genere automáticamente (como los archivos intermedios de Flex/Bison y los .o de GCC) debe ir aquí. Esto mantiene tu código fuente limpio y te permite configurar tu .gitignore para ignorar simplemente la carpeta build/.
+3. Directorio `build/`:
+   Todo lo que generan Flex y Bison automáticamente (`lex.yy.c`, `Gramatica.tab.c`, `Gramatica.tab.h`) va a parar a `build/` junto con el binario `build/c-tds`, manteniendo limpias las carpetas de código fuente.
 
-4 - Aislamiento de tests/ y docs/: Como el 70% de la evaluación objetiva recae en los casos de prueba[cite: 1], tener una suite de tests bien organizada te permitirá probar de forma rápida cada avance. Además, tener una carpeta docs/ te asegura no olvidar la documentación que exige la cátedra en cada entrega.
+4. Suites de `tests/` separadas por etapa:
+   Como el 70% de la evaluación pasa por los casos de prueba, organicé una carpeta por cada entrega (`01_scanner_parser` hasta `05_opt`) conectadas al `Makefile` para verificar rápido que ningún cambio nuevo rompa lo que ya andaba de etapas anteriores.

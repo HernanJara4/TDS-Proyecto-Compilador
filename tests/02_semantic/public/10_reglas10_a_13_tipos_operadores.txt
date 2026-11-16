@@ -1,0 +1,15 @@
+// Reglas 10, 11, 12 y 13: Chequeo de tipos en operadores y asignaciones.
+
+void main() {
+    int x;
+    boolean b;
+
+    x = 10 + true;       // Error (Regla 10): '+' con operando boolean
+    b = 5 < false;       // Error (Regla 10): '<' con operando boolean
+    x = -true;           // Error (Regla 10): '-' unario con operando boolean
+    b = (10 == true);    // Error (Regla 11): '==' entre int y boolean
+    b = (10 && true);    // Error (Regla 12): '&&' con operando int
+    b = !10;             // Error (Regla 12): '!' con operando int
+    x = true;            // Error (Regla 13): asignacion de boolean a variable int
+    b = 42;              // Error (Regla 13): asignacion de int a variable boolean
+}

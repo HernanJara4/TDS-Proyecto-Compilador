@@ -1,0 +1,13 @@
+// Test IR 01: Expresiones aritmeticas y precedencia de operadores.
+// Verifica la generacion de temporales respetando precedencia (* antes que +, - unario).
+
+int resultado;
+
+void main() {
+    int a, b, c;
+    a = 10;
+    b = 3;
+    c = 2;
+
+    resultado = -a + b * c - (a % b);
+}

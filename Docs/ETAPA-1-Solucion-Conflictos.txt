@@ -1,41 +1,43 @@
----
+ETAPA 1 - Solución de Conflictos Shift/Reduce en la Gramática
+Autor: Hernán Jara
+=============================================================
 
-**Decisiones de diseño: Analizador Sintáctico (Gramatica.y)**
+1. El problema que encontré al pasar la gramática a Bison
+---------------------------------------------------------
+En el PDF de la especificación del lenguaje, la regla inicial del programa está definida como:
+  `program -> var_decl* method_decl*`
 
-**1. Modificación de la gramática de declaraciones globales**
+Cuando escribí esa regla de forma literal en Bison (con dos listas separadas: `ListaVarDecl` seguida de `ListaMethodDecl`), Bison me reportó **3 conflictos shift/reduce**, uno por cada token de tipo (`int`, `boolean` y `float`).
 
-La especificación define `program → var_decl* method_decl*`. Implementada de forma literal, esa regla produce 3 conflictos shift/reduce en bison, uno por cada token `int`, `boolean` y `float`.
+¿Por qué se producían esos conflictos?
+Cuando el parser está leyendo las declaraciones globales y ve como próximo token (lookahead) un tipo como `int`, tiene dos caminos posibles:
+- Hacer **Shift**: asumir que ese `int` empieza otra declaración de variable global (`VarDecl`).
+- Hacer **Reduce**: dar por terminada la lista de variables globales y asumir que ese `int` es el tipo de retorno del primer método (`MethodDecl`).
 
-*Causa.* Al terminar la lista de variables globales, el parser tiene un token de tipo por delante y debe decidir entre dos acciones:
+Como ambas cosas empiezan igual (`int ID ...`), recién en el tercer token se sabe qué es: si después del `ID` viene `,` o `;` es una variable, y si viene `(` es un método. Pero como Bison genera un parser LALR(1) que solo mira **un token hacia adelante**, parado en `int` no puede decidir. Y con la resolución por defecto de Bison (que elige hacer Shift), el parser rechazaba programas válidos que empezaban directamente con un método sin variables globales antes (como el ejemplo del propio PDF).
 
-- Shift: el tipo inicia otra declaración de variable.
-- Reduce: se cierra la lista de variables y el tipo es el tipo de retorno del primer método.
 
-Ambas son válidas con el mismo token. Lo que las distingue es el token que sigue al identificador: `,` o `;` para una variable, `(` para un método. Como LALR(1) usa un solo token de anticipación, no puede decidir en ese punto. Con la resolución por defecto de bison (shift), el parser rechazaría programas válidos que comienzan con un método, como el ejemplo del enunciado (`int inc(int x) {...}`).
+2. Cómo decidí solucionarlo
+---------------------------
+Para dejar la gramática con **0 conflictos** sin usar extensiones raras de Bison, hice dos ajustes en `Gramatica.y`:
 
-*Solución adoptada.* Se aplicaron dos cambios:
+1) Unifiqué las dos listas globales en una sola:
+   `ListaDeclaraciones -> ListaDeclaraciones Declaracion | lambda`
+   `Declaracion -> VarDecl | MethodDecl`
+   Al haber una sola lista, el parser ya no tiene que adivinar cuándo termina una lista y empieza la otra antes de leer el tipo.
 
-- Se unificaron las dos listas en una sola: `ListaDeclaraciones → ListaDeclaraciones Declaracion | λ`, con `Declaracion → VarDecl | MethodDecl`. Esto elimina el punto de decisión entre las dos listas.
-- Se eliminó el no terminal intermedio `TipoRetorno`. `MethodDecl` se escribe con dos alternativas directas: `Tipo ID ( Parametros ) Bloque` y `TIPO_VOID ID ( Parametros ) Bloque`. Si `TipoRetorno` se conserva, el mismo conflicto reaparece un paso más abajo, porque el parser debe decidir con `ID` como lookahead si reduce `Tipo → TipoRetorno` o shiftea el identificador.
+2) Eliminé el no terminal intermedio `TipoRetorno`:
+   Escribí `MethodDecl` directamente con dos alternativas:
+   - `Tipo ID PAR_IZQ Parametros PAR_DER Bloque`
+   - `TIPO_VOID ID PAR_IZQ Parametros PAR_DER Bloque`
+   Si dejaba un no terminal `TipoRetorno -> Tipo | void`, el conflicto volvía a aparecer un paso más abajo: al ver `Tipo` con `ID` como lookahead, Bison no sabía si reducir `Tipo -> TipoRetorno` (para un método) o hacer shift de `ID` (para una variable).
+   Al usar `Tipo` directamente en ambas reglas, después de reducir `Tipo` la única acción posible es hacer shift de `ID`, y recién con el próximo token (`,`, `;` o `(`) el parser decide sin ninguna ambigüedad si está en `VarDecl` o en `MethodDecl`.
 
-Con estos cambios, después de `Tipo` la única acción posible es shiftear `ID`, tanto para variables como para métodos. El token siguiente a `Tipo ID` distingue los casos sin ambigüedad: `,` o `;` para variable, `(` para método. La gramática resultante no genera conflictos.
+¿Qué consecuencia tuvo este cambio y cómo lo cubrí?
+Al unificar `ListaDeclaraciones` en la gramática sintáctica, el parser permitiría intercalar una variable global después de un método. Para mantener exactamente la regla del lenguaje (`var_decl* method_decl*`), agregué ese control en el Analizador Semántico (`typecheck.c` mediante el flag `ya_hubo_metodo`): si aparece una variable global después de que ya se declaró un método, reporta el error correspondiente.
 
-*Consecuencia.* La gramática ya no exige que todas las variables globales precedan a todos los métodos; pueden intercalarse. Esto no altera la semántica del lenguaje, porque la regla 2 del análisis semántico ("ningún identificador es usado antes de ser declarado") controla el orden relevante. Si se requiriera el orden estricto, puede verificarse en la etapa semántica sin modificar la gramática.
 
-*Alternativas evaluadas y descartadas:*
-
-- Resolución por defecto de bison: rechaza programas válidos.
-- Precedencia (`%left`, `%prec`): la decisión correcta depende de lo que aparece dos tokens después, y la precedencia no puede mirar hacia adelante.
-- Parser GLR (`%glr-parser`): resuelve el caso sin tocar la gramática, pero agrega complejidad al parser generado y a su depuración.
-- Lexer con lookahead propio: requiere un buffer de tokens en `yylex()`, con más código y más riesgo de errores (por ejemplo, en el conteo de líneas).
-- Left-factoring de `VarDecl` (con un no terminal auxiliar para el resto de la declaración): se probó y no es necesario. `VarDecl` y `ListaId` se mantienen como en la especificación.
-
-**2. Otras decisiones y asunciones**
-
-- **Sentencia `while`.** Se implementó `while ⟨expr⟩ ⟨block⟩` sin paréntesis, tal como figura en la gramática del enunciado. Se asume que no es una errata; queda pendiente confirmarlo con la cátedra.
-- **Precedencia y asociatividad.** Se declaran de menor a mayor según la tabla del enunciado: `||`, `&&`, `==`, `< >`, `+ -`, `* / %`, `!`, menos unario. Los operadores de comparación son `%nonassoc`, ya que encadenarlos no tiene sentido. El menos unario usa el token auxiliar `UMENOS` con `%prec`, porque `-` ya tiene la precedencia de la resta binaria.
-- **Ausencia de `else` colgante.** Como `if` y `else` requieren siempre un `Bloque` delimitado por llaves, no existe ambigüedad sobre a qué `if` pertenece un `else`.
-- **Recuperación de errores.** La regla `error PUNTO_Y_COMA` en `Sentencia` descarta la sentencia errónea y continúa, lo que permite informar varios errores sintácticos en una misma ejecución. `yyerrok` restablece el estado normal del parser.
-- **Manejo de memoria.** El lexer duplica cada identificador con `strdup` y las acciones lo liberan con `free`, porque en esta etapa no se almacenan nombres. Este manejo deberá revisarse al incorporar la tabla de símbolos.
-- **Alcance.** Esta etapa solo verifica la sintaxis. No construye AST ni realiza chequeos semánticos (existencia de `main`, tipos, alcance de identificadores), que corresponden a la etapa siguiente.
-
+3. Otras decisiones y aclaraciones de la Etapa 1
+------------------------------------------------
+- Sentencia `while`: la implementé como `WHILE Expr Bloque` (sin obligar a poner paréntesis alrededor de la condición), respetando tal cual cómo está escrita en la gramática del PDF (`while <expr> <block>`). De todos modos, como `Expr` permite `( Expr )`, si un test escribe `while (x > 0) { ... }` también lo acepta sin problemas.
+- Ausencia del problema del "else colgante" (dangling else): como en C-TDS tanto el `if` como el `else` exigen obligatoriamente un `Bloque` encerrado entre llaves `{ ... }`, nunca hay ambigüedad sobre a qué `if` se asocia un `else`.

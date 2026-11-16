@@ -1,0 +1,27 @@
+// Reglas 6 y 7: Sentencias return y tipo de retorno del metodo.
+// - Metodo void con return <expr>
+// - Metodo no-void con return; vacio
+// - Metodo no-void que retorna un tipo incompatible (boolean en vez de int)
+// - Metodo no-void que puede alcanzar el fin sin return
+
+void proc_void() {
+    return 42; // Error (Regla 6): metodo void no puede retornar un valor
+}
+
+int funcion_int(boolean cond) {
+    if (cond) {
+        return;     // Error (Regla 6): return sin expresion en metodo int
+    } else {
+        return true; // Error (Regla 7): retorna boolean en metodo int
+    }
+}
+
+int sin_retorno(int x) {
+    int y;
+    y = x + 1;
+    // Error: alcanza el final del metodo sin sentencia return
+}
+
+void main() {
+    return;
+}

@@ -1,0 +1,44 @@
+// Caso semantico valido completo:
+// Prueba variables globales, metodos con y sin retorno, recursion,
+// shadowing en bloques anidados, coerciones int <-> float y operadores.
+
+int global_x, global_y;
+float factor;
+boolean activo;
+
+int factorial(int n) {
+    if (n < 2) {
+        return 1;
+    } else {
+        return n * factorial(n - 1);
+    }
+}
+
+float escalar(int base, float mult) {
+    float resultado;
+    resultado = base * mult; // Coercion int -> float (Regla 14)
+    return resultado;
+}
+
+void actualizar_estado(boolean flag) {
+    activo = flag;
+    return;
+}
+
+void main() {
+    int global_x; // Shadowing legal de la global_x en el scope de main
+    float valor_f;
+
+    global_x = factorial(5);
+    global_y = global_x % 3;
+    factor = 2.5;
+
+    valor_f = escalar(global_x, factor);
+    actualizar_estado( true && !(global_x == 0) );
+
+    while global_x > 0 {
+        int global_y; // Shadowing legal dentro del bloque del while
+        global_y = 100;
+        global_x = global_x - 1;
+    }
+}

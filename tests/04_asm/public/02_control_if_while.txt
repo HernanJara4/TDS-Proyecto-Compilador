@@ -1,0 +1,20 @@
+// Test ASM 02: Estructuras de control (while, if-else) y operadores relacionales.
+// Suma los numeros de 1 a 5, pero cuando i == 3 suma 10 en vez de 3:
+// 5 + 4 + 10 + 2 + 1 = 22 (exit code esperado: 22).
+
+int main() {
+    int i, acc;
+    i = 5;
+    acc = 0;
+
+    while i > 0 {
+        if (i == 3) {
+            acc = acc + 10;
+        } else {
+            acc = acc + i;
+        }
+        i = i - 1;
+    }
+
+    return acc;
+}

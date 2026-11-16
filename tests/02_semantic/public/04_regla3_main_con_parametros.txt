@@ -1,0 +1,6 @@
+// Regla 3: El metodo main no debe tener parametros.
+// Debe reportar error semantico en la declaracion de main.
+
+void main(int argc, boolean flag) {
+    return;
+}

@@ -1,0 +1,15 @@
+// Test IR 03: Evaluacion de corto circuito en && y ||.
+// Verifica que el segundo operando quede protegido tras ifFalse / ifTrue.
+
+boolean chequear(int v) {
+    return v > 0;
+}
+
+void main() {
+    int x;
+    boolean ok;
+    x = 5;
+
+    ok = (x > 0) && chequear(x);
+    ok = (x == 0) || !ok;
+}

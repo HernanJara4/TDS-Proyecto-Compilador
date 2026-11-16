@@ -1,0 +1,20 @@
+// Test OPT 03: Simplificacion de saltos constantes y eliminacion de
+// codigo inalcanzable (Dead / Unreachable Code Elimination).
+// La condicion (10 > 5) se pliega a "true", el ifFalse se elimina, y
+// las asignaciones despues de "return 42;" se eliminan por inalcanzables.
+// Exit code esperado: 42.
+
+int main() {
+    int x;
+    x = 0;
+
+    if (10 > 5) {
+        x = 42;
+    } else {
+        x = 99;
+    }
+
+    return x;
+    x = 123;
+    x = x + 1;
+}

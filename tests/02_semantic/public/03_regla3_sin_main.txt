@@ -1,0 +1,8 @@
+// Regla 3: Todo programa contiene la definicion de un metodo llamado main.
+// Este programa no declara main -> debe reportar error semantico.
+
+int x;
+
+int sumar(int a, int b) {
+    return a + b;
+}

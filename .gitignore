@@ -1,2 +1,16 @@
-bin/*
-src/build/*
+# Ignorar PDFs de teoria de la catedra
+Docs/Teoria/
+
+# Ignorar archivos intermedios generados en build/, pero conservar el ejecutable c-tds
+build/*
+!build/c-tds
+
+# Ignorar archivos de salida generados por pruebas manuales
+*.out
+*.ci
+*.ass
+*.s
+*.opt
+*.lex
+*.sint
+*.sem

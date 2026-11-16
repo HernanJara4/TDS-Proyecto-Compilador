@@ -1,0 +1,24 @@
+// Regla 1: Ningun identificador es declarado dos veces en un mismo bloque.
+// Debe reportar:
+// - Redeclaracion global de 'x'
+// - Metodo con mismo nombre que variable global 'x'
+// - Parametro duplicado 'p'
+// - Variable local 'a' que colisiona con el parametro 'a' en el mismo scope del metodo
+// - Variable local duplicada 'local'
+
+int x;
+float x;
+
+void x() {
+    return;
+}
+
+void prueba(int a, int p, boolean p) {
+    float a;
+    int local;
+    boolean local;
+}
+
+void main() {
+    return;
+}

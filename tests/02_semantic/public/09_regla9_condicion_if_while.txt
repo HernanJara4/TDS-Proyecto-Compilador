@@ -1,0 +1,16 @@
+// Regla 9: La <expr> en una sentencia if o while debe ser boolean.
+
+void main() {
+    int x;
+    float f;
+    x = 5;
+    f = 3.5;
+
+    if (x + 1) {       // Error: condicion de tipo int
+        x = 0;
+    }
+
+    while f {          // Error: condicion de tipo float
+        x = x - 1;
+    }
+}

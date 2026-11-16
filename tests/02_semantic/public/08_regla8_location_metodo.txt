@@ -1,0 +1,12 @@
+// Regla 8: Un <id> usado como <location> debe ser una variable o parametro
+// (no puede ser el nombre de un metodo).
+
+int mi_funcion() {
+    return 1;
+}
+
+void main() {
+    int x;
+    mi_funcion = 10;     // Error: asignacion al nombre de un metodo
+    x = mi_funcion + 2;  // Error: uso del nombre de un metodo como variable
+}

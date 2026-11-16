@@ -1,0 +1,17 @@
+// Regla 4: Numero y tipos de argumentos en una invocacion a un metodo
+// deben coincidir con la definicion del metodo.
+
+int calcular(int a, boolean b) {
+    if (b) {
+        return a;
+    } else {
+        return 0;
+    }
+}
+
+void main() {
+    int r;
+    r = calcular(10);                // Error: faltan argumentos (esperaba 2, recibio 1)
+    r = calcular(10, true, 5);       // Error: sobran argumentos (esperaba 2, recibio 3)
+    r = calcular(true, 10);          // Error: tipos invertidos (arg 1 boolean, arg 2 int)
+}

@@ -1,0 +1,32 @@
+// Test ASM 05: Corto circuito logico (&& y ||) y shadowing en bloques anidados.
+// Si el corto circuito falla, llamaria a "efecto_colateral()" que cambia global_err a 99.
+// Con corto circuito correcto y shadowing correcto, devuelve 10 + 20 + 0 = 30.
+
+int global_err;
+
+boolean efecto_colateral() {
+    global_err = 99;
+    return true;
+}
+
+int main() {
+    int x, acum;
+    global_err = 0;
+    x = 10;
+    acum = 0;
+
+    // Corto circuito en &&: como (x < 0) es false, NO debe invocar efecto_colateral()
+    if ((x < 0) && efecto_colateral()) {
+        acum = 100;
+    }
+
+    // Corto circuito en ||: como (x == 10) es true, NO debe invocar efecto_colateral()
+    if ((x == 10) || efecto_colateral()) {
+        int x; // Shadowing local
+        x = 20;
+        acum = acum + x;
+    }
+
+    // La x externa sigue valiendo 10
+    return acum + x + global_err;
+}

@@ -12,7 +12,6 @@
     int yylex(void);
     extern int yylineno;
     extern char *yytext;
-    extern FILE *yyin;
     void yyerror(const char *s);
 
     int errores_lexicos = 0;
@@ -233,6 +232,8 @@ Literal
         {
             char buf[64];
             snprintf(buf, sizeof buf, "%g", $1);
+            if (strchr(buf, '.') == NULL && strchr(buf, 'e') == NULL)
+                strncat(buf, ".0", sizeof(buf) - strlen(buf) - 1);
             $$ = crear_nodo(NODE_NRO, @1.first_line, strdup("float"), NULL, strdup(buf), NULL, NULL, NULL);
         }
     | CONST_TRUE
@@ -248,41 +249,3 @@ void yyerror(const char *s) {
     errores_sintacticos++;
 }
 
-int main(int argc, char **argv) {
-    const char *archivo = NULL;
-    int debug = 0;
-
-    for (int i = 1; i < argc; i++) {
-        if (strcmp(argv[i], "-debug") == 0)
-            debug = 1;
-        else
-            archivo = argv[i];
-    }
-
-    if (archivo != NULL) {
-        FILE *file = fopen(archivo, "r");
-        if (!file) {
-            fprintf(stderr, "No se pudo abrir el archivo '%s'.\n", archivo);
-            return 1;
-        }
-        yyin = file;
-    }
-
-    yyparse();
-
-    if (errores_lexicos > 0 || errores_sintacticos > 0) {
-        fprintf(stderr, "\nSe encontraron %d error/es lexico/s y %d error/es sintactico/s.\n",
-                errores_lexicos, errores_sintacticos);
-        return 1;
-    }
-
-    /* Sin errores lexicos ni sintacticos, el AST esta completo.
-     * Aca se enganchara analizar_semantica(raiz_ast) en la proxima tanda. */
-    if (debug) {
-        printf("Analisis lexico y sintactico exitoso. AST:\n\n");
-        imprimir_ast(raiz_ast, 0);
-    }
-
-    liberar_ast(raiz_ast);
-    return 0;
-}

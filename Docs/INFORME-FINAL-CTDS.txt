@@ -1,0 +1,177 @@
+================================================================================
+                        UNIVERSIDAD NACIONAL DE RÍO CUARTO
+            Facultad de Ciencias Exactas, Físico-Químicas y Naturales
+                           Departamento de Computación
+                   Taller de Diseño de Software (Cód. 3306)
+
+                     INFORME FINAL DEL PROYECTO COMPILADOR
+                                 Lenguaje C-TDS
+
+Autor: Hernán Jara
+Año: 2026
+================================================================================
+
+
+1. DIVISIÓN DEL TRABAJO Y ORGANIZACIÓN DEL PROYECTO
+--------------------------------------------------------------------------------
+Realicé el diseño, implementación, documentación y armado de casos de prueba del
+compilador de forma individual (Hernán Jara) a lo largo de las 5 etapas del
+proyecto.
+
+Para mantener el código ordenado y desacoplado a medida que avanzaban las
+entregas, organicé el proyecto separando las cabeceras en `include/` y los
+módulos de cada fase en subcarpetas dentro de `src/`:
+  - `src/scanner/Gramatica.l`           : Analizador Léxico (Flex)
+  - `src/parser/Gramatica.y`            : Analizador Sintáctico (Bison)
+  - `src/ast/ast.c` (`include/ast.h`)   : Árbol de Sintaxis Abstracta (AST)
+  - `src/semantic/tabla.c` (`tabla.h`)  : Tabla de Símbolos (Pila de Niveles)
+  - `src/semantic/typecheck.c`          : Motor Semántico y Chequeo de Tipos
+  - `src/ir/ir.c` (`include/ir.h`)      : Generador de Código Intermedio (TAC)
+  - `src/asm/codegen.c` (`codegen.h`)   : Generador de Código Objeto x86-64
+  - `src/opt/optimizer.c` (`optimizer.h`): Optimizador de Código Intermedio
+  - `src/main.c` y `Makefile`           : Interfaz de línea de comandos y build
+
+
+2. DECISIONES DE DISEÑO, ASUNCIONES Y JUSTIFICACIONES POR ETAPA
+--------------------------------------------------------------------------------
+
+2.1. Etapa 1: Analizador Léxico y Sintáctico (`Gramatica.l` y `Gramatica.y`)
+- En el scanner (`Gramatica.l`) incluí el guion bajo `_` dentro de la definición
+  de `<alpha_num>` para los identificadores, soporté comentarios de una línea
+  (`//`) y multilínea (`/* ... */`), y registré la línea exacta de cada token en
+  `yylloc.first_line` mediante `YY_USER_ACTION` y `%option yylineno`.
+- **Resolución de conflictos LALR(1) en Bison:**
+  La regla original del enunciado (`program -> var_decl* method_decl*`) genera 3
+  conflictos shift/reduce en Bison (uno por cada tipo `int`, `boolean`, `float`),
+  porque con un solo token de lookahead el parser no puede saber si un tipo al
+  final de las variables globales inicia otra variable o el primer método.
+  Lo solucioné unificando ambas listas en `ListaDeclaraciones` y eliminando el
+  no terminal intermedio `TipoRetorno` en `MethodDecl`. De esta forma la
+  gramática compila con **0 conflictos**, y el orden estricto (variables globales
+  antes que métodos) lo verifico en el Analizador Semántico (`ya_hubo_metodo`).
+- **Precedencia y recuperación de errores:**
+  Declaré la precedencia de operadores de menor a mayor (`||`, `&&`, `==`, `< >`,
+  `+ -`, `* / %`, `!` y menos unario con `%prec UMENOS`), dejando `==` y `< >`
+  como `%nonassoc`. Además agregué recuperación de errores por modo pánico al
+  nivel de sentencias (`error PUNTO_Y_COMA` con `yyerrok`) para poder reportar
+  múltiples errores sintácticos en una misma ejecución.
+
+2.2. Etapa 2: AST, Tabla de Símbolos y Analizador Semántico
+- **AST con Nodo Genérico Ternario y puntero `siguiente` (`ast.h` / `ast.c`):**
+  Diseñé un único `struct ASTNode` con hasta tres hijos (`hijo1`, `hijo2`,
+  `hijo3`, necesarios para el `if-then-else`), un puntero `siguiente` para
+  encadenar listas de declaraciones, parámetros, sentencias y argumentos (patrón
+  *First-Child / Next-Sibling*), y un puntero `Simbolo *` (`tipo_dato`,
+  `nombre_id`, `valor`). Todo el programa cuelga de una única raíz `raiz_ast`
+  (`NODE_PROGRAMA`).
+- **Tabla de Símbolos como Pila de Niveles (`tabla.h` / `tabla.c`):**
+  La implementé como un arreglo de listas enlazadas `TS[MAX_NIVELES]` indexado
+  por `nivel_actual` (`0` = global, `1` = método, `2+` = bloques anidados).
+  Cada `EntradaTS` toma prestado el mismo puntero `Simbolo *` del nodo del AST
+  sin duplicar memoria. Al salir de un bloque, `ts_cerrar_nivel()` libera los
+  nodos `EntradaTS` de ese nivel pero conserva intactos los `Simbolo *` en el
+  AST para las etapas posteriores.
+- **Unificación del scope de parámetros y cuerpo del método (`typecheck.c`):**
+  Como en C-TDS los parámetros formales y las variables locales del cuerpo
+  principal de la función comparten el mismo ámbito, `chequear_metodo()` abre el
+  Nivel 1, inserta los parámetros y llama a `chequear_bloque(metodo->hijo2, 0)`
+  sin abrir un nivel extra, detectando cualquier colisión de nombres entre un
+  parámetro y una variable local. En cambio, los bloques internos (`if`, `else`,
+  `while`, bloques sueltos) llaman a `chequear_bloque(bloque, 1)`, abriendo un
+  nuevo nivel que permite el ocultamiento (*shadowing*) de identificadores.
+- **Chequeo de las 14 reglas y Anotación de Tipos:**
+  Durante el recorrido en profundidad valido las 14 reglas semánticas (unicidad
+  por bloque, declaración previa al uso, existencia de `main` sin parámetros,
+  firma de llamadas, prohibición de `void` en expresiones, correspondencia de
+  `return` y garantía de retorno en métodos no-`void`, categoría de `<location>`,
+  condiciones booleanas en `if`/`while`, compatibilidad de tipos y coerciones
+  entre `int` y `float` de la Regla 14) y estampo el tipo inferido en cada nodo
+  del árbol (`anotar_tipo()`), dejando listo el **AST Anotado**.
+
+2.3. Etapa 3: Generador de Código Intermedio (`ir.h` / `ir.c`)
+- **Lista enlazada de Cuádruplas (`InstruccionIR`):**
+  Traduzco el AST anotado a una secuencia lineal en memoria de instrucciones de
+  Tres Direcciones `(op, tipo, arg1, arg2, res, siguiente)` con inserción en
+  $O(1)$ al final de la lista.
+- **Corto Circuito en `&&` y `||`:**
+  Para cumplir con la especificación (pág. 5), traduje `&&` y `||` mediante
+  saltos condicionales (`IR_JMP_FALSE` e `IR_JMP_TRUE`) y etiquetas, garantizando
+  que el segundo operando nunca se evalúe si el primero ya define el valor de
+  verdad de la expresión.
+- **Orden de evaluación en llamadas anidadas (`f(g(1), h(2))`):**
+  En `gen_llamada()`, primero evalúo todas las expresiones de los argumentos de
+  izquierda a derecha guardando sus temporales en un arreglo local, y recién al
+  final emito todas las instrucciones `param` contiguas antes del `call`. Esto
+  evita que los `param` de una llamada externa se mezclen con los de una llamada
+  interna.
+- **Desambiguación de variables ocultadas (*Shadowing*) al aplanar bloques:**
+  Al desaparecer las llaves `{ ... }` en el Código Intermedio, dos variables
+  locales llamadas `x` en distintos niveles de la misma función colisionarían.
+  Lo resolví asignándoles un alias único (`x.1`, `x.2`) en `typecheck.c` cuando
+  `nivel_actual >= 2` oculta una variable local previa de la misma función.
+- **Coerciones explícitas (`int2float` y `float2int`):**
+  La función `ajustar_tipo()` inserta instrucciones de conversión explícitas
+  cuando operan o se asignan valores entre `int` y `float` (Regla 14).
+
+2.4. Etapa 4: Generador de Código Objeto Assembly x86-64 (`codegen.h` / `codegen.c`)
+- **Stack Frame completo por función y ABI de Linux x86-64:**
+  Antes de emitir el código de cada método, `construir_frame_funcion()` escanea
+  sus instrucciones IR y le asigna una celda de 8 bytes en `-offset(%rbp)` a
+  cada parámetro formal, variable local y temporal, redondeando el tamaño del
+  frame a múltiplo de 16 bytes para cumplir con la alineación de `%rsp` exigida
+  por la System V AMD64 ABI.
+- **Variables globales y llamadas:**
+  Las globales se alojan en `.bss` y se acceden con `nombre(%rip)`. Los primeros
+  6 argumentos se pasan en `%rdi`, `%rsi`, `%rdx`, `%rcx`, `%r8`, `%r9` y en el
+  prólogo de la función llamada se copian a sus slots `-offset(%rbp)` para que
+  sobrevivan a llamadas recursivas o anidadas.
+- **Aritmética entera y punto flotante SSE:**
+  Para división entera y módulo (`/` y `%`) uso `cqto` antes de `idivq %rcx`.
+  Para punto flotante (`float`), codifico los literales en su representación
+  hexadecimal IEEE-754 de 32 bits y opero en los registros `%xmm0` y `%xmm1`
+  usando `addss`, `subss`, `mulss`, `divss`, `ucomiss`, `cvtsi2ssq` y
+  `cvttss2siq`.
+
+2.5. Etapa 5: Optimizador de Código Intermedio (`optimizer.h` / `optimizer.c`)
+- Cuando se invoca con `-opt` (`all`, `cf`, `cp`, `dce`), `optimizar_ir()`
+  ejecuta en un ciclo de punto fijo tres pasadas sobre la lista de cuádruplas:
+  1) **Plegado de Constantes y Simplificación Algebraica (`cf`):** evalúa en
+     compilación operaciones sobre constantes enteras, flotantes, booleanas y
+     coerciones (`int2float 60 -> 60.0`), y simplifica identidades algebraicas
+     (`x + 0 -> x`, `x * 1 -> x`, `x * 0 -> 0`, `x - x -> 0`, `x / 1 -> x`).
+  2) **Propagación de Constantes y Fusión de Copias (`cp`):** propaga temporales
+     constantes de única definición y fusiona asignaciones `t_k = op; var = t_k`
+     en `var = op`.
+  3) **Eliminación de Código Muerto e Inalcanzable (`dce`):** simplifica saltos
+     condicionales constantes, elimina código inalcanzable tras `return`/`goto`,
+     borra etiquetas huérfanas y elimina temporales no leídos (preservando
+     siempre las instrucciones `IR_CALL` por sus posibles efectos laterales).
+
+
+3. CAMBIOS REALIZADOS EN ETAPAS ANTERIORES Y PROBLEMAS RESUELTOS
+--------------------------------------------------------------------------------
+1. **Inclusión del guion bajo `_` en `Gramatica.l`:**
+   Al revisar la especificación de `<alpha_num>` para la Etapa 2, agregué `_` a
+   los caracteres permitidos luego de la primera letra de un identificador y
+   activé `%option nounput` y `%option noinput` para compilar sin warnings.
+2. **Formateo de literales `float` con parte decimal `.0` en `Gramatica.y`:**
+   Durante el testing de ejecución de binarios en la Etapa 4
+   (`04_punto_flotante_y_coercion.txt`), detecté que `snprintf(..., "%g", $1)`
+   en `Gramatica.y` recortaba el `.0` de literales como `2.0`, dejándolos como
+   `"2"`. Eso hacía que el generador de Assembly interpretara `"2"` como una
+   constante entera en vez de un `float` IEEE-754. Lo solucioné en `Gramatica.y`
+   conservando siempre el `.0` en los tokens `FLOTANTE`.
+
+
+4. TESTING Y VERIFICACIÓN
+--------------------------------------------------------------------------------
+Organicé 5 suites de prueba automatizadas desde el `Makefile` (`make test`):
+  - `make test-parser`   : 10 tests léxicos y sintácticos (`tests/01_scanner_parser/`).
+  - `make test-semantic` : 11 tests que cubren las 14 reglas semánticas (`tests/02_semantic/`).
+  - `make test-ir`       : 6 tests de generación de Tres Direcciones (`tests/03_ir/`).
+  - `make test-asm`      : 5 tests compilados a binarios nativos x86-64 y ejecutados (`tests/04_asm/`).
+  - `make test-opt`      : 3 tests de optimización comparando IR/ASM y ejecución (`tests/05_opt/`).
+
+Actualmente no quedan errores conocidos pendientes: el compilador pasa la
+totalidad de los casos de prueba de las 5 etapas sin warnings de compilación ni
+fugas de memoria.

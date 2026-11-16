@@ -1,0 +1,17 @@
+// Test IR 04: Estructuras de control if, if-else y while anidado.
+// Verifica la generacion de etiquetas L0, L1... y saltos condicionales/incondicionales.
+
+void main() {
+    int i, acc;
+    i = 5;
+    acc = 0;
+
+    while i > 0 {
+        if (i == 3) {
+            acc = acc + 10;
+        } else {
+            acc = acc + i;
+        }
+        i = i - 1;
+    }
+}

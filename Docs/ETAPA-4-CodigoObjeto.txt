@@ -1,0 +1,48 @@
+ETAPA 4 - Generador de Código Objeto Assembly x86-64 (`codegen.h` / `codegen.c`)
+Autor: Hernán Jara
+================================================================================
+
+1. Estrategia general de traducción a x86-64
+--------------------------------------------
+En esta etapa implementé en `include/codegen.h` y `src/asm/codegen.c` la traducción de la lista de instrucciones de Tres Direcciones (`InstruccionIR *`) a código Assembly x86-64 en sintaxis AT&T para Linux (GCC).
+
+Como recomienda el PDF del proyecto (pág. 2), prioricé que el código generado sea 100% correcto y fácil de seguir antes que hacer un asignador complejo de registros. Para eso armé un esquema de **Stack Frame completo por función**:
+- Las variables globales (`IR_GLOBAL`) se declaran en la sección `.bss` reservando 8 bytes alineados para cada una (`.zero 8`) y se acceden con direccionamiento relativo a `%rip`: `nombre(%rip)`.
+- Para cada función (`IR_FUNC_BEGIN` hasta `IR_FUNC_END`), antes de emitir su código recorro sus instrucciones con `construir_frame_funcion()` y le asigno un slot de **8 bytes** en la pila (`-8(%rbp)`, `-16(%rbp)`, `-24(%rbp)`, ...) a cada parámetro formal, a cada variable local y a cada temporal (`t0`, `t1`...).
+- Luego, al traducir cada cuádrupla, cargo los operandos en registros de trabajo fijos (`%rax` y `%rcx` para enteros y booleanos; `%xmm0` y `%xmm1` para `float`), ejecuto la instrucción x86-64 correspondiente y guardo el resultado en el `-offset(%rbp)` de destino.
+
+La gran ventaja de guardar todos los locales y temporales en el Stack Frame es que ningún valor temporal se pierde nunca cuando hay una instrucción `call` en el medio de una expresión.
+
+
+2. Detalles técnicos y problemas que tuve que cuidar en x86-64
+--------------------------------------------------------------
+
+2.1. Alineación de la pila (`%rsp`) a 16 bytes
+La convención de llamadas de Linux x86-64 (System V AMD64 ABI) exige que `%rsp` esté alineado a múltiplos de 16 bytes antes de ejecutar un `call`. Si una función tenía una cantidad impar de variables/temporales (por ejemplo 3 slots = 24 bytes) y yo restaba `subq $24, %rsp`, la pila quedaba desalineada.
+Para evitarlo, en `construir_frame_funcion()` redondeo siempre el tamaño del frame al múltiplo de 16 superior:
+`bytes_alineados = ((bytes_brutos + 15) / 16) * 16`.
+
+2.2. Uso de `cqto` antes de `idivq` en la división entera y el resto (`%`)
+En x86-64, la instrucción `idivq %rcx` divide el número de 128 bits formado por `%rdx:%rax` por `%rcx` (dejando el cociente en `%rax` y el resto en `%rdx`).
+Si no se limpia `%rdx` antes de dividir, queda con basura y el binario tira `Floating point exception (SIGFPE)`. Y si se pone `0` en `%rdx` cuando el dividendo en `%rax` es negativo, la división da mal. Por eso, antes de cada `idivq %rcx` emito la instrucción `cqto`, que extiende el bit de signo de `%rax` a todo `%rdx`.
+
+2.3. Pasaje de parámetros y recursividad
+Siguiendo la ABI de Linux:
+- En `IR_ARG` (`param`), cargo los primeros 6 argumentos en los registros `%rdi`, `%rsi`, `%rdx`, `%rcx`, `%r8` y `%r9` (y si hubiera más de 6, los empujo a la pila con `pushq`).
+- Apenas empieza la función llamada (`IR_PARAM_DECL`), copio cada parámetro desde su registro (`%rdi`, `%rsi`, ...) hacia su slot `-offset(%rbp)` en la pila.
+Hacer esa copia en el prólogo fue clave para que funcionen bien las funciones recursivas como `factorial(n)`: cuando `factorial` prepara la llamada recursiva a `factorial(n - 1)`, pisa `%rdi` con `n - 1`, pero su propio parámetro `n` queda a salvo en `-8(%rbp)` para poder multiplicarlo cuando vuelve del `call`.
+
+2.4. Punto flotante (`float`) con registros SSE y constantes IEEE-754
+Como el ensamblador x86-64 no permite escribir literales flotantes como inmediatos (`movss $2.5, %xmm0` no existe), en `cargar_operando()` convierto el `float` a su patrón de 32 bits IEEE-754 en hexadecimal (`memcpy(&bits, &valor_f, 4)`), lo cargo con `movq $0x..., %rax` y lo paso a `%xmm0` / `%xmm1` con `movd %eax, %xmm0`.
+Para las operaciones reales uso `addss`, `subss`, `mulss`, `divss` y `ucomiss`, y para las coerciones de la Regla 14 uso las instrucciones nativas de conversión:
+- `int2float`: `cvtsi2ssq %rax, %xmm0`
+- `float2int`: `cvttss2siq %xmm0, %rax`
+
+2.5. Etiquetas locales con prefijo `.L`
+A las etiquetas generadas por el IR (`L0`, `L1`...) les agrego un punto adelante al pasarlas a Assembly (`.L0:`, `jmp .L0`) para que el ensamblador las trate como etiquetas locales y nunca choquen con nombres de funciones del programa.
+
+
+3. Bug de una etapa anterior que detecté probando los binarios
+--------------------------------------------------------------
+Al armar el test `04_punto_flotante_y_coercion.txt` y ejecutar el binario compilado, noté que devolvía `0` en lugar de `19`. Revisando el IR y el Assembly generados, encontré que el literal `2.0` se estaba guardando en `Gramatica.y` usando `snprintf(buf, sizeof buf, "%g", $1)`. El formato `%g` de C le borraba el `.0` final y dejaba `"2"`, haciendo que `codegen.c` lo confundiera con el entero `2` en lugar del flotante `2.0` (`0x40000000`).
+Lo corregí en `Gramatica.y` asegurándome de que si `%g` no deja punto decimal en un token `FLOTANTE`, se le agregue `".0"`. Con ese arreglo el test dio exactamente `19`.

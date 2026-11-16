@@ -1,0 +1,16 @@
+// Test IR 02: Coerciones int -> float y truncamientos float -> int (Regla 14).
+// Verifica que se emitan instrucciones explicitas int2float y float2int.
+
+float escalar(float x, int factor) {
+    return x * factor; // factor (int) se convierte con int2float
+}
+
+void main() {
+    int entero;
+    float real;
+
+    entero = 7;
+    real = entero + 2.5;         // int2float sobre entero
+    entero = real;               // float2int al truncar en asignacion
+    real = escalar(entero, 3.8); // int2float en arg 1, float2int en arg 2
+}

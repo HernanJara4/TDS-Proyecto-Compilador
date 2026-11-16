@@ -1,0 +1,24 @@
+// Test ASM 03: Llamadas anidadas y recursividad (factorial).
+// Verifica que los registros de parametros (%rdi, %rsi) se preserven en el
+// Stack Frame a traves de llamadas recursivas y anidadas.
+// factorial(5) = 120, doble(3) = 6 -> 120 + 6 = 126 (exit code esperado: 126).
+
+int factorial(int n) {
+    if (n < 2) {
+        return 1;
+    } else {
+        return n * factorial(n - 1);
+    }
+}
+
+int doble(int x) {
+    return x * 2;
+}
+
+int sumar(int a, int b) {
+    return a + b;
+}
+
+int main() {
+    return sumar(factorial(5), doble(3));
+}

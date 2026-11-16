@@ -1,0 +1,18 @@
+// Test IR 06: Shadowing (ocultamiento) de variables locales en bloques anidados.
+// Verifica que las variables internas reciban alias unicos (x.1, x.2) al aplanar el IR.
+
+void main() {
+    int x;
+    x = 1;
+
+    if (x > 0) {
+        int x;
+        x = 2;
+        if (x == 2) {
+            int x;
+            x = 3;
+        }
+    }
+
+    x = 4;
+}

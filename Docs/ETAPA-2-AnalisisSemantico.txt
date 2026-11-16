@@ -1,0 +1,61 @@
+ETAPA 2 - Analizador Semántico y Chequeo de Tipos (`typecheck.h` / `typecheck.c`)
+Autor: Hernán Jara
+=================================================================================
+
+1. Cómo pensé el recorrido semántico sobre el AST
+-------------------------------------------------
+Siguiendo el esquema de las clases de teoría (`06-TDS-TS.pdf` y `07-TDS-ASTyTS.pdf`), implementé el analizador semántico en `src/semantic/typecheck.c` mediante un recorrido recursivo en profundidad (DFS) de una sola pasada sobre `raiz_ast`, apoyándome en la Tabla de Símbolos (`tabla.c`).
+
+Mientras recorro el árbol hago dos cosas al mismo tiempo:
+- **De arriba hacia abajo (manejo de contexto y ámbitos):**
+  Abro y cierro niveles en la Tabla de Símbolos (`ts_abrir_nivel` / `ts_cerrar_nivel`) al entrar y salir de métodos y bloques, y guardo en la variable estática `metodo_actual` el puntero al `NODE_METODO` que estoy analizando para poder contrastar cualquier sentencia `return` contra el tipo de retorno declarado en esa función.
+- **De abajo hacia arriba (síntesis y anotación de tipos en el AST):**
+  En las expresiones (`chequear_expresion`), los tipos nacen en las hojas (`NODE_NRO`, `NODE_BOOL` y `NODE_ID` después de buscarlo en la TS) y suben hacia los nodos operadores (`NODE_OP_UNARIA`, `NODE_OP_BINARIA`, `NODE_LLAMADA`). En cada nodo intermedio verifico que los tipos de los hijos cumplan las reglas del lenguaje y guardo el tipo resultante en `nodo->simbolo->tipo_dato` usando `anotar_tipo()`.
+  De esta manera, cuando termina `analizar_semantica(raiz_ast)`, aunque los ámbitos locales de la Tabla de Símbolos ya se hayan cerrado, **todo el AST queda anotado con los tipos** para la etapa de Código Intermedio.
+
+
+2. Decisiones clave que tomé en la implementación
+-------------------------------------------------
+
+2.1. Recorrido en una sola pasada y Regla 2 ("declarado antes de ser usado")
+Como las listas del AST (puntero `siguiente`) mantienen el orden exacto en que aparecen las declaraciones y sentencias en el archivo fuente, recorrerlas de izquierda a derecha garantiza que en cualquier uso (`NODE_ID`, `NODE_ASIGNACION`, `NODE_LLAMADA`) la Tabla de Símbolos tenga cargados **únicamente** los identificadores declarados antes de esa línea.
+Para los métodos (`NODE_METODO`), inserto la firma de la función en `TS[0]` justo antes de analizar su bloque cuerpo: así permito que una función se llame a sí misma recursivamente (como `factorial`), pero rechazo que llame a una función declarada más abajo en el archivo.
+
+2.2. Unificación del ámbito de parámetros y cuerpo del método
+La especificación (pág. 4) aclara que el ámbito de una función está formado tanto por sus parámetros formales como por las variables locales de su cuerpo principal (no se puede declarar una variable local con el mismo nombre que un parámetro).
+Si yo abría el Nivel 1 para los parámetros y después `chequear_bloque()` abría siempre un Nivel 2 para el cuerpo del método, una variable local con el mismo nombre que un parámetro lo habría ocultado (shadowing) en vez de dar error de redeclaración (Regla 1).
+Para resolverlo, a `chequear_bloque(ASTNode *bloque, int abrir_scope)` le agregué el parámetro `abrir_scope`:
+- Cuando llamo al bloque principal de un método, ya abrí el Nivel 1 al cargar sus parámetros, así que le paso `abrir_scope = 0` para que sus variables locales se inserten en ese mismo Nivel 1.
+- Cuando entro a cualquier bloque interno (`if`, `else`, `while` o un bloque `{ ... }` suelto), le paso `abrir_scope = 1`, abriendo un Nivel 2 (o superior) donde sí es válido ocultar identificadores de niveles anteriores.
+
+2.3. Diferenciar llamadas a métodos como sentencia vs. como expresión (Regla 5)
+En C-TDS, un método `void` solo se puede llamar como sentencia suelta, mientras que en una expresión el método llamado tiene que retornar un valor (Regla 5). Como en el AST ambos casos usan `NODE_LLAMADA`, a la función `chequear_llamada(ASTNode *llamada, int en_expresion)` le paso `en_expresion = 0` cuando vengo desde `chequear_sentencia()` y `en_expresion = 1` cuando vengo desde `chequear_expresion()`.
+
+2.4. Compatibilidad de tipos y coerciones `int` <-> `float` (Regla 14)
+La Regla 14 permite coerciones o truncamientos entre `int` y `float`. Centralicé esta regla en `es_numerico()` y `tipos_compatibles(t1, t2)`:
+- Dos tipos son compatibles si son iguales (`strcmp(t1, t2) == 0`) o si ambos son numéricos (`int` y `float`).
+- En las operaciones aritméticas (`+`, `-`, `*`, `/`), si ambos operandos son `int` anoto el resultado como `int`, y si al menos uno es `float` promuevo el resultado a `float`.
+
+2.5. Evitar errores en cascada
+Si una subexpresión tiene un error (por ejemplo, una variable no declarada), `chequear_expresion()` informa ese error y devuelve `NULL`. Los nodos padres que reciben `NULL` de algún hijo cortan el chequeo de ese operador sin volver a tirar otro mensaje de error encima, evitando llenar la consola de falsos errores causados por uno solo.
+
+2.6. Control de `return` en métodos no-`void`
+La especificación (pág. 4) pide que los métodos que retornan un resultado no alcancen el fin del método sin retornar. Para chequearlo implementé `bloque_garantiza_retorno()`, que verifica que el bloque del método tenga una sentencia `return` directa o un `if-else` completo donde ambas ramas garanticen retorno.
+
+
+3. Resumen de dónde chequeo cada una de las 14 Reglas Semánticas
+----------------------------------------------------------------
+- Regla 1 (No redeclarar en el mismo bloque): en `registrar_declaracion()` y `chequear_metodo()` mediante `ts_insertar()`.
+- Regla 2 (Declarar antes de usar): en `NODE_ID`, `NODE_ASIGNACION` y `chequear_llamada()` con `ts_buscar()`.
+- Regla 3 (Existencia de `main` sin parámetros): al final de `analizar_semantica()` buscando `"main"` en `TS[0]`.
+- Regla 4 (Cantidad y tipos de argumentos): en `chequear_llamada()`.
+- Regla 5 (Llamada en expresión no puede ser `void`): en `chequear_llamada()` cuando `en_expresion == 1`.
+- Regla 6 (`return` con/sin expresión según `void` o no-`void`): en `chequear_sentencia()` para `NODE_RETORNO`.
+- Regla 7 (Tipo del `return` coincide con el método): en `NODE_RETORNO` + `bloque_garantiza_retorno()`.
+- Regla 8 (`<id>` como `<location>` debe ser variable o parámetro): en `NODE_ASIGNACION` y `NODE_ID` verificando `categoria != CAT_FUNCION`.
+- Regla 9 (Condición de `if` y `while` booleana): en `NODE_IF` y `NODE_WHILE`.
+- Regla 10 (Operandos de aritméticos y relacionales `int` o `float`): en `NODE_OP_BINARIA` y `NODE_OP_UNARIA` (`-`).
+- Regla 11 (Operandos de `==` compatibles): en `NODE_OP_BINARIA` (`==`).
+- Regla 12 (Operandos de `&&`, `||` y `!` booleanos): en `NODE_OP_BINARIA` y `NODE_OP_UNARIA` (`!`).
+- Regla 13 (Asignación con tipos compatibles): en `NODE_ASIGNACION`.
+- Regla 14 (Coerciones/truncamientos `int` <-> `float`): en `tipos_compatibles()` y en la promoción aritmética.

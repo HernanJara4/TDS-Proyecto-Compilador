@@ -1,0 +1,19 @@
+// Regla 2: Ningun identificador es usado antes de ser declarado.
+// Debe reportar:
+// - Uso de variable 'no_existe' no declarada
+// - Uso de 'declarada_despues' antes de su declaracion
+// - Invocacion a 'metodo_posterior' antes de su declaracion
+
+int a;
+
+void main() {
+    a = no_existe + 1;
+    a = declarada_despues;
+    a = metodo_posterior();
+}
+
+int declarada_despues;
+
+int metodo_posterior() {
+    return 10;
+}

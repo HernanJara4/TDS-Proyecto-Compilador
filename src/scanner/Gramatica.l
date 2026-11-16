@@ -19,11 +19,14 @@ extern int errores_lexicos; /* Contador global de errores lexicos, definido en G
 
 %option noyywrap
 %option yylineno
+%option nounput
+%option noinput
 
 /* ---------- Definiciones Regulares --------- */
 LETRA        [a-zA-Z]
 DIGITO       [0-9]
-ID           {LETRA}({LETRA}|{DIGITO})*
+ALFANUM      {LETRA}|{DIGITO}|_
+ID           {LETRA}{ALFANUM}*
 NRO          {DIGITO}+
 FLOTANTE     {DIGITO}+"."{DIGITO}+
 

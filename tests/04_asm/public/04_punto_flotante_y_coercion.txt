@@ -1,0 +1,15 @@
+// Test ASM 04: Punto flotante (SSE) y coerciones int <-> float (Regla 14).
+// Calcula (7 + 2.5) * 2.0 = 19.0 y lo trunca a int al retornar:
+// exit code esperado: 19.
+
+float operar_float(int a, float b) {
+    float suma;
+    suma = a + b;
+    return suma * 2.0;
+}
+
+int main() {
+    int resultado_entero;
+    resultado_entero = operar_float(7, 2.5);
+    return resultado_entero;
+}

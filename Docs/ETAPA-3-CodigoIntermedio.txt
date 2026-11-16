@@ -1,0 +1,46 @@
+ETAPA 3 - Generador de Código Intermedio de Tres Direcciones (`ir.h` / `ir.c`)
+Autor: Hernán Jara
+==============================================================================
+
+1. Representación Intermedia elegida: Lista de Cuádruplas (`InstruccionIR`)
+---------------------------------------------------------------------------
+En esta etapa implementé en `include/ir.h` y `src/ir/ir.c` el generador que recorre el AST anotado y construye el Código Intermedio de Tres Direcciones (TAC).
+
+En lugar de imprimir el código intermedio directamente con `printf` mientras recorro el árbol, decidí armar en memoria una **lista simplemente enlazada de cuádruplas** (`struct InstruccionIR`). Cada nodo guarda:
+- `OpIR op`: el código de operación (`IR_ADD`, `IR_ASN`, `IR_JMP_FALSE`, `IR_CALL`, etc.).
+- `char *tipo`: el tipo del dato (`"int"`, `"float"`, `"boolean"`, `"void"`).
+- `char *arg1` y `char *arg2`: primer y segundo operando.
+- `char *res`: destino (variable, temporal `t0, t1...` o etiqueta `L0, L1...`).
+- `InstruccionIR *siguiente`: puntero a la próxima instrucción.
+
+Además mantengo dos punteros (`codigo_ir` al inicio y `cola_ir` al último nodo) para que la función `emitir()` agregue cada nueva instrucción al final de la lista en $O(1)$ sin tener que recorrer toda la lista cada vez.
+Tener esta lista en memoria me sirvió tanto para volcar el archivo `.ci` con `imprimir_ir()` como para pasársela directamente al Optimizador (`optimizer.c`) y al Generador de Assembly (`codegen.c`).
+
+
+2. Decisiones de diseño y problemas que resolví al implementarlo
+----------------------------------------------------------------
+
+2.1. Hojas como operandos directos para no generar temporales de más
+Cuando `gen_expresion()` baja hasta una hoja (`NODE_NRO`, `NODE_BOOL` o `NODE_ID`), en vez de emitir una instrucción `t0 = 5` o `t1 = a`, devuelve directamente el string `"5"` o `"a"` para que el operador padre lo use como operando en la cuádrupla (`t0 = a + 5`), tal como vimos en la filmina 2 de `05-TDS-AST.pdf`. Así genero muchas menos instrucciones y menos temporales.
+
+2.2. Evaluación de Corto Circuito en `&&` y `||`
+La especificación (pág. 5) pide que `&&` y `||` usen evaluación de corto circuito: si el primer operando alcanza para decidir el resultado (`false` en `&&`, `true` en `||`), el segundo operando **no debe evaluarse**.
+Si yo traducía `a && funcion()` como una operación binaria común (`t0 = a`, `t1 = call funcion`, `t2 = t0 && t1`), iba a ejecutar `funcion()` aunque `a` fuera falso.
+Por eso, en `gen_expresion()` implementé `&&` y `||` con etiquetas y saltos condicionales:
+- Para `E1 && E2`: evalúo `E1`; si es falso (`ifFalse izq goto L_false`), salto directo a asignar `t_res = false` sin ejecutar las instrucciones de `E2`.
+- Para `E1 || E2`: evalúo `E1`; si es verdadero (`ifTrue izq goto L_true`), salto directo a asignar `t_res = true` sin ejecutar `E2`.
+
+2.3. El problema de los `param` en llamadas anidadas: `f(g(1), h(2))`
+Cuando probé llamadas anidadas me encontré con un detalle importante: si emitía la instrucción `param` a medida que iba evaluando cada argumento de `f`, después de evaluar `g(1)` emitía el primer `param` de `f`, y enseguida aparecía el `param 2` que en realidad era para `h(2)`. Eso dejaba los parámetros de `f` y de `h` mezclados.
+Para solucionarlo en `gen_llamada()`:
+1) Primero evalúo todas las expresiones de los argumentos de izquierda a derecha y guardo los nombres/temporales resultantes en un arreglo local `operandos_args[]`.
+2) Recién cuando terminaron de resolverse todas las subexpresiones (y cualquier llamada interna que tuvieran adentro), hago un `for` que emite todos los `param` de la función actual juntos e inmediatamente antes de su instrucción `call`.
+
+2.4. Ocultamiento de variables (Shadowing) al aplanar bloques anidados
+En el código fuente una función puede tener `int x;` al inicio y otra `int x;` declarada adentro del bloque de un `if` o un `while`. Pero cuando pasamos a Código Intermedio, las llaves `{ ... }` desaparecen y la función queda como una secuencia plana de instrucciones con etiquetas. Si ambas variables se siguieran llamando `"x"`, en el IR y en Assembly terminarían pisándose la misma posición de memoria.
+Lo resolví coordinando `typecheck.c` con `ir.c`:
+- En `registrar_declaracion()` (`typecheck.c`), si estoy en un bloque anidado (`nivel_actual >= 2`) y el nombre de la variable ya existe en un nivel superior de la misma función (`niveles 1..nivel_actual-1`), le genero un alias único (`"x.1"`, `"x.2"`) en el campo `simbolo->valor` y lo copio en los nodos `NODE_ID` y `NODE_ASIGNACION` que apuntan a esa variable.
+- Después, en `ir.c`, la función `nombre_efectivo(nodo)` usa ese alias si existe, o `nombre_id` si no hubo colisión.
+
+2.5. Instrucciones explícitas para coerciones `int` <-> `float` (Regla 14)
+Siguiendo el ejemplo de las filminas de teoría (`temp1 := inttoreal(60)`), armé la función `ajustar_tipo(operando, t_origen, t_destino)`. Cada vez que un `int` se opera con un `float`, se asigna a una variable `float`, se retorna en una función `float` o se pasa como argumento a un parámetro `float` (o al revés, truncando de `float` a `int`), emito una instrucción explícita `IR_INT2FLOAT` (`t_k = int2float op`) o `IR_FLOAT2INT` (`t_k = float2int op`). Esto dejó todo preparado para que el generador de Assembly sepa exactamente cuándo convertir tipos.

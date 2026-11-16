@@ -1,0 +1,12 @@
+// Regla 5: Si la invocacion a un metodo es usada como una expresion,
+// el metodo debe retornar un resultado (no puede ser void).
+
+void hacer_algo(int x) {
+    return;
+}
+
+void main() {
+    int a;
+    hacer_algo(5);           // Valido: invocacion como sentencia
+    a = hacer_algo(5) + 1;   // Error: hacer_algo es void y se usa en una expresion
+}

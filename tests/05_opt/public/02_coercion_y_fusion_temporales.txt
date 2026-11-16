@@ -1,0 +1,16 @@
+// Test OPT 02: Ejemplo de la filmina de la catedra (05-TDS-AST.pdf pag. 2):
+// Plegado de coerciones int2float sobre constantes (int2float 60 -> 60.0)
+// y fusion de temporales intermedios en asignaciones.
+// rate = 1.5 -> 10.0 + 1.5 * 60 = 100.0 -> truncado a int retorna 100.
+
+int main() {
+    float initial, rate, position;
+    int res;
+
+    initial = 10.0;
+    rate = 1.5;
+    position = initial + rate * 60;
+    res = position;
+
+    return res;
+}
